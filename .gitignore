@@ -1,0 +1,12 @@
+/target
+/classes
+/checkouts
+/dev
+/.cpcache
+pom.xml
+pom.xml.asc
+.nrepl-port
+*.jar
+*.class
+/bin
+*.org
