@@ -35,7 +35,10 @@
          (first (cols-as-rows {:genres-rock [1 0], :genres-dub [1 0],
                                 :genres-rap '(0 0), :genres-jazz [0 1],
                                 :city-warsaw '(0 0), :city-gdańsk [1 0],
-                                :city-kraków [0 1]})))))
+                                :city-kraków [0 1]})))
+      "base case")
+  (is (= 0 (count (cols-as-rows {}))) "no columns")
+  (is (= 0 (count (cols-as-rows {:a [] :b []}))) "empty columns"))
 
 (deftest test-cols-as-vecs
   (is (= '((1 0 1) (1 0 0) (1 0 2))
@@ -70,6 +73,8 @@
                           { :kind ["fish" "tiger" "ant"]
                            :color ["silver" "orange" nil]
                            :sound [nil "roar" nil]}))
-      "add empty seq of records to existing columns"))
+      "add empty seq of records to existing columns")
+  (is (= 0 (count (records-as-cols [])))
+      "empty input"))
 
 ; (run-tests 'gmrs.wrangle-test)

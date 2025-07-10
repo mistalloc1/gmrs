@@ -60,6 +60,11 @@ later as some actual drivers come in. This must warn the user that *no items
 will be preserved* after exiting the JVM. But the baseless mode should be
 left existing in some way to ease developing GMRS and apps using it.
 
+## "Send" saving, updating and IDs
+
+If possible, the sends should update (replace) the relevant records when the
+sent records' IDs match with existing ones.
+
 ## "Give" data driver features
 
 This is heavily **under construction** and consideration.

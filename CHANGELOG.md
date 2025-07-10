@@ -11,8 +11,8 @@ the new features.
 ### Added
 ...
 
-### Changed
-...
+### Fixed
+- Option, case gives/sends (baseless version) now work.
 
 ## [0.0.1-init] - 2025-07-09
 
