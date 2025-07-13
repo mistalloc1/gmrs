@@ -4,7 +4,8 @@
 (defn toy-temp-baseless-io-settings []
   { :option-id :iid, :case-id :uid, :govern-id :gid,
    :dec-option :optid, :dec-case :caseid, :dec-agree :agree,
-   :inter-option :optid, :inter-case :caseid })
+   :inter-option :optid, :inter-case :caseid
+   :page-size 32 })
 
 ; TODO: later move this to io-setup source file so it's more general
 ; NOTE: these are atoms and not refs intentionally, we never want to assume
@@ -18,13 +19,15 @@
         dec-store (atom {}),
         inter-store (atom {}),
         govern-store (atom {})]
-    { :option-gives [(fn [settings & ignored-args] (vals @option-store))]
+    { :option-gives [(fn [settings & ignored-args]
+                       (take (settings :page-size) (vals @option-store)))]
       :option-sends [(fn [settings new-options]
                        (swap! option-store into
                               (map (fn [item]
                                      [((settings :option-id) item) item])
                                    new-options)))]
-      :case-gives [(fn [settings & ignored-args] (vals @case-store))]
+      :case-gives [(fn [settings & ignored-args]
+                     (take (settings :page-size) (vals @case-store)))]
       :case-sends [(fn [settings new-cases]
                      (swap! case-store into
                             (map (fn [item]

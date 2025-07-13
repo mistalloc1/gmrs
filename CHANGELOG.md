@@ -9,7 +9,7 @@ the new features.
 ## [Unreleased]
 
 ### Added
-...
+- CSV gives and API function for sending the contents
 
 ### Fixed
 - Option, case gives/sends (baseless version) now work.

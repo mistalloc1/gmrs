@@ -17,9 +17,9 @@ Run tests, after setting up a kaocha
 [binstub](https://cljdoc.org/d/lambdaisland/kaocha/CURRENT/doc/1-introduction):
 
 ```
-bin/kaocha
+bin/kaocha --focus :unit
 # to watch in the background:
-bin/kaocha --watch
+bin/kaocha --focus :unit --watch
 ```
 
 ## License

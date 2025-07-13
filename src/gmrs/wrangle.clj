@@ -2,8 +2,8 @@
 as it cares about the meaning of the data, it should go into preprocess."
 
 (ns gmrs.wrangle
-  (:require
-    [clojure.set :as set])
+  (:require [clojure.set :as set]
+            [clojure.string :as str])
   (:use [clojure.test :only [is]]))
 
 (defn all-same-length? [& xs]
@@ -76,3 +76,30 @@ as it cares about the meaning of the data, it should go into preprocess."
        (recur (rest records)
               (merge new-cols missing-value-cols)
               (inc col-length))))))
+
+(defn keywordify
+  "Get list of keywords corresponding to the names (strings). They correspond to
+  the strings exactly if possible, but non-alphanumeric characters outside of
+  -_\"'?<>=!+* will be replaced with dashes (-). If the would be collisions, the
+  keywords will get suffixes like -001, -002 etc."
+  [names]
+  (letfn [(get-base-form [string]
+            (str/replace string
+                         #"[^\d\p{IsAlphabetic}-_\"'?<>=!+*]"
+                         "-"))
+          (keywordify-step [remaining-names keywords keyword-map]
+            (if (empty? remaining-names)
+              keywords
+              (let [base-form (get-base-form (first remaining-names))]
+                (if (get keyword-map base-form)
+                  (recur (rest remaining-names)
+                         (conj keywords
+                               (keyword
+                                 (str base-form "-"
+                                      (format "%03d"
+                                              (get keyword-map base-form)))))
+                         (update keyword-map base-form inc))
+                  (recur (rest remaining-names)
+                         (conj keywords (keyword base-form))
+                         (assoc keyword-map base-form 1))))))]
+    (keywordify-step names [] {})))

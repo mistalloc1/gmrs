@@ -77,4 +77,15 @@
   (is (= 0 (count (records-as-cols [])))
       "empty input"))
 
+(deftest test-keywordify
+  (is (= [:dill :dandelion :daisy]
+         (keywordify ["dill" "dandelion" "daisy"]))
+      "simple case")
+  (is (= [:dill :common-dandelion :Lawn-daisy]
+         (keywordify ["dill" "common/dandelion" "Lawn daisy"]))
+      "extra chars replaced with dashes")
+  (is (= [:dill :dandelion :common-daisy :common-daisy-001]
+         (keywordify ["dill" "dandelion" "common-daisy" "common daisy"]))
+      "collision in simplified names"))
+
 ; (run-tests 'gmrs.wrangle-test)
