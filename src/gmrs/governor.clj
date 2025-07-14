@@ -1,6 +1,7 @@
 (ns gmrs.governor
   (:require
     [clojure.set :as set]
+    [gmrs.io.getters :refer [getter]]
     [gmrs.wrangle :as wrangle]))
 
 (defn new-governor
@@ -8,20 +9,12 @@
   []
   { :recs-amount 5 })
 
-(defn probe-sources
-  "Get a (hopefully representative) amount of records from the source."
-  [sources amount]
-  (wrangle/records-as-cols
-    (take amount
-          (reduce into sources))))
-
 (defn diagnose-columns-from-source
   "Get column diagnostics.
 
   For possible column attributes see docs/column-attibutes.md."
-  [govern sources]
-  (let [sample-size (:recs-amount govern),
-        sample (probe-sources sources sample-size)]
+  [govern io-settings give-sources]
+  (let [sample (first (getter io-settings give-sources))]
     (reduce into
             (map (fn [col-name col]
                    {col-name
@@ -33,11 +26,14 @@
 
 (defn update-columns-diagnostics
   "Add columns diagnostic info to the governor."
-  [old-govern option-gives case-gives inter-gives]
+  [old-govern io-settings option-gives case-gives inter-gives]
   (merge old-govern
-         {:option-columns (diagnose-columns-from-source old-govern option-gives),
-          :case-columns (diagnose-columns-from-source old-govern case-gives),
-          :inter-columns (diagnose-columns-from-source old-govern inter-gives)}))
+         {:option-columns (diagnose-columns-from-source
+                            old-govern io-settings option-gives),
+          :case-columns (diagnose-columns-from-source
+                          old-govern io-settings case-gives),
+          :inter-columns (diagnose-columns-from-source
+                           old-govern io-settings inter-gives)}))
 
 (defn choose-and-prepare-mill
   [old-govern]
@@ -55,6 +51,7 @@
 
 (defn autogovern
   "Automatically try to select the mill and mark columns as features."
-  [old-govern option-gives case-gives inter-gives]
+  [old-govern io-settings option-gives case-gives inter-gives]
   (choose-and-prepare-mill
-    (update-columns-diagnostics old-govern option-gives case-gives inter-gives)))
+    (update-columns-diagnostics old-govern io-settings
+                                option-gives case-gives inter-gives)))

@@ -9,10 +9,12 @@ the new features.
 ## [Unreleased]
 
 ### Added
-- CSV gives and API function for sending the contents
+- CSV gives and API function for sending the contents.
 
 ### Changed
 - Gives as lazy sequences.
+- Reorganized the getters used by command and governor namespaces, decoupled
+  from the global state.
 
 ### Fixed
 - Option, case gives/sends (baseless version) now work.

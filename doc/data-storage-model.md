@@ -20,7 +20,9 @@ output data for uses outside of GMRS.
 ## Gives
 
 Gives are functions that get IO settings map as the arg and return a lazy
-sequence of sequences of `(<= page-size)` amount of records.
+sequence of sequences of `(<= page-size)` amount of records. The lazy sequences
+remember the page size from the time of their creation, so you'll want to
+call the give again if you want the new page size.
 
 ## Sends
 
@@ -94,11 +96,9 @@ performance.
 Another thing is expecting ordering from sources. Most likely we should expect
 none, especially if we move to anything beyond SQL.
 
-We can expect to get all the items eventually. But this has two caveats:
-performance (don't get zip-bombed in a way) and the governor column diagnose
-feature, which only probes some records by default. Maybe the sample size should
-be increased to the amount a mill would use in recommendation (but this
-knowledge would ideally be provided to both governors and mills from one source?).
+We can expect to get all the items eventually. By the default the getters
+produce sequences cycling indefinitely, so every time one needs to decide how
+many pages (with possible repeats) the part of the program needs.
 
 ### Filtering
 

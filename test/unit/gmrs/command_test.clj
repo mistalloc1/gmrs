@@ -1,7 +1,8 @@
 (ns gmrs.command-test
   (:require [clojure.test :refer :all]
-            [gmrs.command :refer :all :as cmd]
+            [gmrs.command :refer :all]
             [gmrs.wrangle :as wrangle]
+            [gmrs.io.getters :as get]
             [gmrs.io.baseless :as bs]))
 
 (def example-options
@@ -15,19 +16,23 @@
    {:id 2140 :name "Zoltan" :danger "low" :city "Budapest"}])
 
 (deftest test-integr-send-and-get-options
-  (binding [cmd/*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
-            cmd/*GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
+  (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
+            *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
                                           :option-id :id)]
     (send-options! example-options)
-    (is (= example-options (wrangle/cols-as-rows (first (_get-options))))
+    (is (= example-options
+           (wrangle/cols-as-rows (first (get/get-options *GlobalIOSettings*
+                                                         *GlobalIOSetup*))))
         "getting previously sent options")))
 
 (deftest test-integr-send-and-get-cases
-  (binding [cmd/*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
-            cmd/*GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
+  (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
+            *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
                                           :case-id :id)]
     (send-cases! example-cases)
-    (is (= example-cases (wrangle/cols-as-rows (first (_get-cases))))
+    (is (= example-cases
+           (wrangle/cols-as-rows (first (get/get-cases  *GlobalIOSettings*
+                                                         *GlobalIOSetup*))))
         "getting previously sent cases")))
 
 ; (run-tests `gmrs.command-test)

@@ -4,6 +4,7 @@
             [gmrs.command :refer :all :as cmd]
             [gmrs.wrangle :as wrangle]
             [gmrs.io.csv :as csv]
+            [gmrs.io.getters :as get]
             [gmrs.io.baseless :as bs]))
 
 (deftest test-anid-loading
@@ -22,7 +23,8 @@
             (update-in cmd/*GlobalIOSetup*
                        [:case-gives]
                        conj (csv/csv-give user-reader)))
-      (let [options (first (_get-options))]
+      (let [options (first (get/get-options cmd/*GlobalIOSettings*
+                                            cmd/*GlobalIOSetup*))]
         ; We expect the columnar format.
         (is (= 25 (count (keys options))))
         (is (= 32 (wrangle/cols-row-count options)))))))

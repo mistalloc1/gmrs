@@ -36,7 +36,7 @@ enough so it can be used from outside of Clojure).
 
 #### Work items
 
-- [ ] clean _get-governor, _get-options functions as private `defn-`s or separate ns %
+- [x] clean get/get-governor, get/get-options functions as private `defn-`s or separate ns %
 - [x] loading CSVs through API
 - [ ] detect numbers and timestamps in governor, if provided as strings
 - [ ] provide a wrapper performing conversions marked by the governor
@@ -56,3 +56,5 @@ enough so it can be used from outside of Clojure).
 % If separate ns, think of discouraging access from anywhere but gmrs.command.
 We need to keep all the other stuff strictly separated. But the usage in
 gmrs.governor (which might be overall) different should also be considered.
+(edit: this is done by keeping the globals that need to be passed as args in the
+command namespace)

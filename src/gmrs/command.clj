@@ -4,6 +4,7 @@
             [gmrs.governor :as gv]
             [gmrs.wrangle :as wrangle]
             [gmrs.io.baseless :as bs]
+            [gmrs.io.getters :as get]
             [gmrs.mills.informed-popularity
              :refer [informed-popularity-recommend]]
             [gmrs.mills.nearest-options :refer [nearest-options-recommend]]))
@@ -13,34 +14,6 @@
 (def ^:dynamic *EnabledMills*
   { :informed-popularity informed-popularity-recommend 
     :nearest-options nearest-options-recommend })
-
-;
-; Helper functions.
-
-(defn _get-governor [govern-name]
-  (some (map (fn [give-fun] (give-fun *GlobalIOSettings* govern-name))
-             (:govern-gives *GlobalIOSetup*))))
-
-(defn _pages [gives]
-  "Lazy sequence of concatenated subsequent pages of each give."
-  (lazy-seq (cons
-              (with-meta
-                (wrangle/records-as-cols (apply concat (map first gives)))
-                {:io-settings *GlobalIOSettings*})
-              (_pages (map rest gives)))))
-
-(defn _get-options []
-  (let [gives (map #(apply % [*GlobalIOSettings*])
-                   (:option-gives *GlobalIOSetup*))]
-    (_pages gives)))
-
-(defn _get-cases []
-  (let [gives (map #(apply % [*GlobalIOSettings*])
-                   (:case-gives *GlobalIOSetup*))]
-    (_pages gives)))
-
-;
-; API functions.
 
 (defn new-governor! [govern-name]
   (run! (fn [send-fun]
@@ -80,8 +53,11 @@
                           (rest contents))))))
 
 (defn autogovern! [govern-name]
-  (let [old-govern (_get-governor govern-name),
+  (let [old-govern (get/get-governor *GlobalIOSettings*
+                                     *GlobalIOSetup*
+                                     govern-name),
         new-govern (gv/autogovern old-govern
+                                  *GlobalIOSettings*
                                   (:option-gives *GlobalIOSetup*)
                                   (:case-gives *GlobalIOSetup*)
                                   (:inter-gives *GlobalIOSetup*))]
@@ -92,14 +68,19 @@
 (defn recommend-to
   ([govern-name cases-filter options-filter]
    (recommend-to govern-name cases-filter options-filter
-                 (first (_get-cases))))
+                 (first (get/get-cases  *GlobalIOSettings*
+                                       *GlobalIOSetup*))))
   ; NOTE: this is intended so you could send in new cases without saving them
   ; to the storage
   ([govern-name cases-filter options-filter case-cols]
    ; TODO: actually apply cases-filter and options-filter, some filters and
    ; guidance should come from the guvna/mill
-   (let [governor (_get-governor govern-name)]
+   (let [governor (get/get-governor  *GlobalIOSettings*
+                                    *GlobalIOSetup*
+                                    govern-name)]
      (apply ((governor :mill) *EnabledMills*)
             case-cols
-            (first (_get-options)) ; FIXME: apply strategy here and for cases
+            ; FIXME: apply strategy here and for cases
+            (first (get/get-options *GlobalIOSettings*
+                                    *GlobalIOSetup*))
             governor))))
