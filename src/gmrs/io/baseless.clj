@@ -20,14 +20,18 @@
         inter-store (atom {}),
         govern-store (atom {})]
     { :option-gives [(fn [settings & ignored-args]
-                       (take (settings :page-size) (vals @option-store)))]
+                       (cycle
+                         (partition-all (settings :page-size)
+                                        (vals @option-store))))]
       :option-sends [(fn [settings new-options]
                        (swap! option-store into
                               (map (fn [item]
                                      [((settings :option-id) item) item])
                                    new-options)))]
       :case-gives [(fn [settings & ignored-args]
-                     (take (settings :page-size) (vals @case-store)))]
+                     (cycle
+                       (partition-all (settings :page-size)
+                                      (vals @case-store))))]
       :case-sends [(fn [settings new-cases]
                      (swap! case-store into
                             (map (fn [item]

@@ -22,7 +22,7 @@
             (update-in cmd/*GlobalIOSetup*
                        [:case-gives]
                        conj (csv/csv-give user-reader)))
-      (let [options (_get-options)]
+      (let [options (first (_get-options))]
         ; We expect the columnar format.
         (is (= 25 (count (keys options))))
         (is (= 32 (wrangle/cols-row-count options)))))))

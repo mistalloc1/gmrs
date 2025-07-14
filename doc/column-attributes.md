@@ -17,3 +17,4 @@ instead.
 - `:time`
 - `:past` - time, containing timestamps from the past
 - `:future` - time, containing timestamps from the future
+- `:needs-conv` - the column needs conversion from string to the indicated format

@@ -10,7 +10,9 @@
    (let [csv (csv/read-csv reader),
          field-names (wrangle/keywordify (first csv))]
      (fn [io-settings]
-       (map
-         (fn [row] 
-           (apply assoc {} (interleave field-names row)))
-         (take (io-settings :page-size) (rest csv)))))))
+       ((if wrap? cycle identity)
+        (partition-all (io-settings :page-size)
+                       (map
+                         (fn [row]
+                           (apply assoc {} (interleave field-names row)))
+                         (rest csv))))))))

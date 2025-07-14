@@ -6,7 +6,7 @@ Both are set up in `*GlobalIOSetup*` variable in `gmrs.command`.
 For one-time manual addition (from CSVs, etc.) users should use API calls.
 
 We make our best to combine gives (which can be different DBs etc.) into one
-stream for transparert use by GMRS functions.
+stream for transparent use by GMRS functions.
 
 GMRS writes the relevant items to all the sends. Note that this could be also
 as an API plumbing: i.e. we don't have to do anything interesting with (say)
@@ -16,6 +16,16 @@ later use.
 Not all gives have to also be sends and vice versa. This allows for
 seeding/providing the system with some read-only sources, or siphoning the
 output data for uses outside of GMRS.
+
+## Gives
+
+Gives are functions that get IO settings map as the arg and return a lazy
+sequence of sequences of `(<= page-size)` amount of records.
+
+## Sends
+
+Sends are functions that take as the args the IO settings map and the sequence
+of records to add.
 
 ## Record types
 

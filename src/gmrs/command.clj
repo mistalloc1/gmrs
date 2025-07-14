@@ -21,19 +21,23 @@
   (some (map (fn [give-fun] (give-fun *GlobalIOSettings* govern-name))
              (:govern-gives *GlobalIOSetup*))))
 
+(defn _pages [gives]
+  "Lazy sequence of concatenated subsequent pages of each give."
+  (lazy-seq (cons
+              (with-meta
+                (wrangle/records-as-cols (apply concat (map first gives)))
+                {:io-settings *GlobalIOSettings*})
+              (_pages (map rest gives)))))
+
 (defn _get-options []
-  (with-meta
-    (wrangle/records-as-cols
-      (reduce into (map #(apply % [*GlobalIOSettings*])
-                        (:option-gives *GlobalIOSetup*))))
-    {:io-settings *GlobalIOSettings*}))
+  (let [gives (map #(apply % [*GlobalIOSettings*])
+                   (:option-gives *GlobalIOSetup*))]
+    (_pages gives)))
 
 (defn _get-cases []
-  (with-meta
-    (wrangle/records-as-cols
-      (reduce into (map #(apply % [*GlobalIOSettings*])
-                     (:case-gives *GlobalIOSetup*))))
-    {:io-settings *GlobalIOSettings*}))
+  (let [gives (map #(apply % [*GlobalIOSettings*])
+                   (:case-gives *GlobalIOSetup*))]
+    (_pages gives)))
 
 ;
 ; API functions.
@@ -88,13 +92,14 @@
 (defn recommend-to
   ([govern-name cases-filter options-filter]
    (recommend-to govern-name cases-filter options-filter
-                 (_get-cases)))
+                 (first (_get-cases))))
   ; NOTE: this is intended so you could send in new cases without saving them
   ; to the storage
   ([govern-name cases-filter options-filter case-cols]
-   ; TODO: actually apply cases-filter and options-filter
+   ; TODO: actually apply cases-filter and options-filter, some filters and
+   ; guidance should come from the guvna/mill
    (let [governor (_get-governor govern-name)]
      (apply ((governor :mill) *EnabledMills*)
             case-cols
-            (_get-options)
+            (first (_get-options)) ; FIXME: apply strategy here and for cases
             governor))))

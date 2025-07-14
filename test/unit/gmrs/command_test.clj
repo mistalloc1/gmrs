@@ -19,7 +19,7 @@
             cmd/*GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
                                           :option-id :id)]
     (send-options! example-options)
-    (is (= example-options (wrangle/cols-as-rows (_get-options)))
+    (is (= example-options (wrangle/cols-as-rows (first (_get-options))))
         "getting previously sent options")))
 
 (deftest test-integr-send-and-get-cases
@@ -27,7 +27,7 @@
             cmd/*GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
                                           :case-id :id)]
     (send-cases! example-cases)
-    (is (= example-cases (wrangle/cols-as-rows (_get-cases)))
+    (is (= example-cases (wrangle/cols-as-rows (first (_get-cases))))
         "getting previously sent cases")))
 
 ; (run-tests `gmrs.command-test)

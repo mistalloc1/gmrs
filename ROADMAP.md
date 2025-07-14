@@ -4,6 +4,8 @@
 
 - evaluation, using the stored decision data
 - rework CSV funcs to handle different delimiters and dialects
+- perhaps in recommending the gives should be saved and stateful, to go through
+  all of the data
 
 ## Future versions
 
@@ -36,8 +38,10 @@ enough so it can be used from outside of Clojure).
 
 - [ ] clean _get-governor, _get-options functions as private `defn-`s or separate ns %
 - [x] loading CSVs through API
-- [ ] detect and parse numbers and timestamps in CSVs
-- [ ] handle pagination from the gives
+- [ ] detect numbers and timestamps in governor, if provided as strings
+- [ ] provide a wrapper performing conversions marked by the governor
+- [x] handle pagination from the gives
+- [ ] strategy for consuming the right amount of pages
 - [ ] extend preprocessing for handling data from EDGAR
 - [ ] extend preprocessing for handling data from AniD
 - [ ] handle nils in preprocessing and/or existing mills

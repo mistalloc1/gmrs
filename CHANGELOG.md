@@ -11,6 +11,9 @@ the new features.
 ### Added
 - CSV gives and API function for sending the contents
 
+### Changed
+- Gives as lazy sequences.
+
 ### Fixed
 - Option, case gives/sends (baseless version) now work.
 
