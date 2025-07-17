@@ -11,9 +11,12 @@
 
 (def ^:dynamic *GlobalIOSettings* (bs/toy-temp-baseless-io-settings))
 (def ^:dynamic *GlobalIOSetup* (bs/toy-temp-baseless-io-setup))
+
 (def ^:dynamic *EnabledMills*
   { :informed-popularity informed-popularity-recommend 
     :nearest-options nearest-options-recommend })
+(def ^:dynamic *EnabledPullStrategies*
+  { :target-top-heavy gv/target-top-heavy-pull-strategy })
 
 (defn new-governor! [govern-name]
   (run! (fn [send-fun]
@@ -75,12 +78,21 @@
   ([govern-name cases-filter options-filter case-cols]
    ; TODO: actually apply cases-filter and options-filter, some filters and
    ; guidance should come from the guvna/mill
-   (let [governor (get/get-governor  *GlobalIOSettings*
+   (let [gov (get/get-governor  *GlobalIOSettings*
                                     *GlobalIOSetup*
-                                    govern-name)]
-     (apply ((governor :mill) *EnabledMills*)
-            case-cols
-            ; FIXME: apply strategy here and for cases
-            (first (get/get-options *GlobalIOSettings*
-                                    *GlobalIOSetup*))
-            governor))))
+                                    govern-name)
+         mill ((gov :mill) *EnabledMills*),
+         pull-strat ((gov :pull-strategy) *EnabledPullStrategies),
+         options-getter (get/get-options *GlobalIOSettings*
+                                         *GlobalIOSetup*)]
+     (loop [sample-number 1,
+            new-recs (mill case-cols (first options-getter) gov),
+            accum-recs [],
+            remaining-options (rest options-getter)]
+       (if (or (empty? new-recs)
+               (not (pull-strat gov accum-rec sample-number)))
+         (take (gov :recs-amount) accum-rec)
+         (recur (inc sample-number)
+                (mill case-cols (first remaining-options) gov)
+                (wrangle/sort-rec-options (wrangle/stack accum-recs new-recs))
+                (rest remaining-options)))))))

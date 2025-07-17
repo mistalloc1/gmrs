@@ -4,10 +4,41 @@
     [gmrs.io.getters :refer [getter]]
     [gmrs.wrangle :as wrangle]))
 
+(defn target-top-heavy-pull-strategy
+  "Pages pull strategy based on linearly increasing the tolerance on distance
+  from the target recommendation score (1.0). Top 3 recommendations are
+  considered for each case, with descending weight.
+
+  Current-scores should be sorted desceding. Returns binary decision on whether
+  to pull a further sample."
+  [gov current-scores sample-number]
+  (let [options-count (wrangle/cols-row-count current-scores),
+        decreasing-weight (fn [sum scores-map idx final-idx]
+                            (if (= idx (inc final-idx))
+                              sum
+                              (recur (+ sum
+                                        (if (>= (inc idx) options-count)
+                                          0.0
+                                          (/
+                                           (reduce + (map #(:score (nth % idx))
+                                                          (vals scores-map)))
+                                           (inc idx))))
+                                     scores-map (inc idx) final-idx))),
+        cost-of-recommendation (- 1.0
+                                  (if (or (empty? current-scores)
+                                          (zero? options-count))
+                                    0.0
+                                    (/ (decreasing-weight 0.0 current-scores
+                                                          0 3)
+                                       options-count))),
+        cost-of-next-pull (* (:score-weakness-tolerance gov) sample-number)]
+    (> cost-of-recommendation cost-of-next-pull)))
+
 (defn new-governor
   "Create a bare empty governor."
   []
-  { :recs-amount 5 })
+  { :recs-amount 5
+    :score-weakness-tolerance 0.02 :pull-strategy :target-top-heavy })
 
 (defn diagnose-columns-from-source
   "Get column diagnostics.

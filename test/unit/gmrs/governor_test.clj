@@ -6,7 +6,25 @@
             [gmrs.command :as cmd]))
 
 (def hotel-governor
-  {:recs-amount 2})
+  { :recs-amount 2
+    :score-weakness-tolerance 0.02
+    :pull-strategy :target-top-heavy })
+
+(deftest test-target-top-heavy-pull-strategy
+  (is (true?
+        (target-top-heavy-pull-strategy
+          hotel-governor
+          {:a [{:score 0.98 :option "go"} {:score 0.1 :option "stay"}]
+           :b [{:score 0.25 :option "go"} {:score 0.01 :option "stay"}]}
+          1))
+      "high recommendation cost")
+  (is (false?
+        (target-top-heavy-pull-strategy
+          hotel-governor
+          {:a [{:score 0.98 :option "go"} {:score 0.1 :option "stay"}]
+           :b [{:score 0.25 :option "go"} {:score 0.01 :option "stay"}]}
+          1000))
+      "high recommendation cost but after many pulls"))
 
 (def hotel-option-gives
   (map (fn [source] (fn [io-settings]
@@ -72,6 +90,7 @@
 
 (deftest test-update-columns-diagnostics
   (is (= { :recs-amount 2
+          :score-weakness-tolerance 0.02 :pull-strategy :target-top-heavy
           :option-columns
           {:name '(:tags) :country '(:tags) :checkin-until '(:tags)
            :amenities '(:tags) :avg-price '(:num) :row-id '(:num) }

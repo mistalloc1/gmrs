@@ -6,6 +6,7 @@
 - rework CSV funcs to handle different delimiters and dialects
 - perhaps in recommending the gives should be saved and stateful, to go through
   all of the data
+- consider using Spark for dataframes, perhaps Polars in ClojureScript version
 
 ## Future versions
 
@@ -41,7 +42,7 @@ enough so it can be used from outside of Clojure).
 - [ ] detect numbers and timestamps in governor, if provided as strings
 - [ ] provide a wrapper performing conversions marked by the governor
 - [x] handle pagination from the gives
-- [ ] strategy for consuming the right amount of pages
+- [x] strategy for consuming the right amount of pages
 - [ ] extend preprocessing for handling data from EDGAR
 - [ ] extend preprocessing for handling data from AniD
 - [ ] handle nils in preprocessing and/or existing mills

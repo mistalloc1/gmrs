@@ -77,6 +77,20 @@
   (is (= 0 (count (records-as-cols [])))
       "empty input"))
 
+(deftest test-stack
+  (let [data1 { :kind ["fish" "tiger"]
+                :color ["silver" "orange"]
+                :sound [nil "roar"] }
+        data2 { :kind ["moose"] :color ["brown"] :sound ["bellow"] }
+        data3 { :kind ["fish" "tiger" "moose"]
+                :color ["silver" "orange" "brown"]
+                :sound [nil "roar" "bellow"] }
+        data4 { :kind ["fish" "tiger" "moose" "moose"]
+                :color ["silver" "orange" "brown" "brown"]
+                :sound [nil "roar" "bellow" "bellow"] }]
+    (is (= data3 (stack data1 data2)))
+    (is (= data4 (stack data1 data2 data2)))))
+
 (deftest test-keywordify
   (is (= [:dill :dandelion :daisy]
          (keywordify ["dill" "dandelion" "daisy"]))

@@ -26,7 +26,8 @@
         :genres "oldies"
         :volume 70
         :city "Sandomierz"}])
-    {:io-settings {:option-id :venue-name}}))
+    {:io-settings {:option-id :venue-name
+                   :case-id :name}}))
 (def example-options
   (with-meta
     (wrangle/records-as-cols
@@ -38,7 +39,8 @@
         :genres "goth|rock"
         :volume -696
         :city "Kraków"}])
-    {:io-settings {:option-id :venue-name}}))
+    {:io-settings {:option-id :venue-name
+                   :case-id :name}}))
 (def volume-transf { :volume
                     (preprocess/z-logistic-scale
                       (concat (:volume example-cases)
@@ -74,81 +76,76 @@
 
 (deftest test-nearest-options-recommend
   (testing "one feature (genres)"
-    (let [recs (nearest-options-recommend example-cases example-options
-                                        {:tag-fields '(:genres)
-                                         :number-fields ()
-                                         :recs-amount 3})]
-      ; ferdek/warsaw
-      (is (= "Warsaw Jazz" (:venue-name (first (first recs))))
+    (let [recs
+          (wrangle/sort-rec-options
+            (nearest-options-recommend example-cases example-options
+                                       {:tag-fields '(:genres)
+                                        :number-fields ()}))]
+      (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
-      (is (pos? (:score (first (first recs))))
+      (is (pos? (:score (first (recs "ferdek/warsaw"))))
           "Warsaw Jazz for ferdek")
-      (is (neg? (:score (second (first recs))))
+      (is (neg? (:score (second (recs "ferdek/warsaw"))))
           "Kraków Rock for ferdek")
-      ; ela/warsaw
-      (is (= "Kraków Rock" (:venue-name (first (second recs)))))
-      (is (pos? (:score (first (second recs))))
+      (is (= "Kraków Rock" (:venue-name (first (recs "ela/warsaw")))))
+      (is (pos? (:score (first (recs "ela/warsaw"))))
           "Kraków Rock for ferdek")
-      (is (neg? (:score (second (second recs))))
+      (is (neg? (:score (second (recs "ela/warsaw"))))
           "Warsaw Jazz for ferdek")
-      ; sara/kraków
-      (is (every? neg? (map :score (nth recs 2)))
+      (is (every? neg? (map :score (recs "sara/kraków")))
           "no matches and negative correlation for sara")
-      ; alojzy/sandomierz
-      (is (every? neg? (map :score (nth recs 3)))
+      (is (every? neg? (map :score (recs "alojzy/sandomierz")))
           "no matches and negative correlation for alojzy")))
 6
   (testing "two features (genres, city)"
-    (let [recs (nearest-options-recommend example-cases example-options
-                                        {:tag-fields '(:genres :city)
-                                         :number-fields ()
-                                         :recs-amount 3})]
-      ; ferdek/warsaw
-      (is (= "Warsaw Jazz" (:venue-name (first (first recs))))
+    (let [recs
+          (wrangle/sort-rec-options
+            (nearest-options-recommend example-cases example-options
+                                       {:tag-fields '(:genres :city)
+                                        :number-fields ()
+                                        :recs-amount 3}))]
+      (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
-      (is (pos? (:score (first (first recs))))
+      (is (pos? (:score (first (recs "ferdek/warsaw"))))
           "Warsaw Jazz for ferdek")
-      (is (neg? (:score (second (first recs))))
+      (is (neg? (:score (second (recs "ferdek/warsaw"))))
           "Kraków Rock for ferdek")
-      ; ela/warsaw
-      (is (every? pos? (map :score (second recs)))
+      (is (every? pos? (map :score (recs "ela/warsaw")))
           "all options match somewhat for ela")
-      ; sara/kraków
-      (is (= "Kraków Rock" (:venue-name (first (nth recs 2))))
+      (is (= "Kraków Rock" (:venue-name (first (recs "sara/kraków"))))
           "top for sara (city match) ")
-      (is (pos? (:score (first (nth recs 2))))
+      (is (pos? (:score (first (recs "sara/kraków"))))
           "Kraków Rock for sara")
-      (is (neg? (:score (second (nth recs 2))))
+      (is (neg? (:score (second (recs "sara/kraków"))))
           "Warsaw Jazz for sara")))
  
   (testing "three features (genres, city, volume)"
-    (let [recs (nearest-options-recommend example-cases example-options
-                                        {:tag-fields '(:genres :city)
-                                         :number-fields '(:volume)
-                                         :recs-amount 3})]
-      ; ferdek/warsaw
-      (is (= "Warsaw Jazz" (:venue-name (first (first recs))))
+    (let [recs
+          (wrangle/sort-rec-options
+            (nearest-options-recommend example-cases example-options
+                                       {:tag-fields '(:genres :city)
+                                        :number-fields '(:volume)
+                                        :recs-amount 3}))]
+      (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
-      (is (pos? (:score (first (first recs))))
+      (is (pos? (:score (first (recs "ferdek/warsaw"))))
           "Warsaw Jazz for ferdek")
-      (is (neg? (:score (second (first recs))))
+      (is (neg? (:score (second (recs "ferdek/warsaw"))))
           "Kraków Rock for ferdek")
-      ; ela/warsaw
-      (is (every? pos? (map :score (second recs)))
+      (is (every? pos? (map :score (recs "ela/warsaw")))
           "all options match somewhat for ela")
-      ; sara/kraków
-      (is (= "Kraków Rock" (:venue-name (first (nth recs 2))))
+      (is (= "Kraków Rock" (:venue-name (first (recs "sara/kraków"))))
           "top for sara (city match) ")
-      (is (pos? (:score (first (nth recs 2))))
+      (is (pos? (:score (first (recs "sara/kraków"))))
           "Kraków Rock for sara")
-      (is (neg? (:score (second (nth recs 2))))
+      (is (neg? (:score (second (recs "sara/kraków"))))
           "Warsaw Jazz for sara")
-      ; alojzy/sandomierz
-      (is (= "Warsaw Jazz" (:venue-name (first (nth recs 3))))
+      (is (= "Warsaw Jazz" (:venue-name (first (recs "alojzy/sandomierz"))))
           "top for alojzy")
-      (is (> (:score (first (nth recs 3))) -0.5)
+      (is (> (:score (first (recs "alojzy/sandomierz"))) -0.5)
           "Warsaw Jazz for alojzy")
-      (is (neg? (:score (second (nth recs 3))))
+      (is (neg? (:score (second (recs "alojzy/sandomierz"))))
           "Kraków Rock for alojzy"))))
+(run-test test-nearest-options-recommend)
 
 ; (run-tests 'gmrs.mills.nearest-options-test)

@@ -22,6 +22,18 @@ to help in the decisions. The interactions can be referred to in the code as
 
 ...
 
+A mill function gets cases and options and returns options ID along with
+scores for each case. It shouldn't concern itself with sorting. It is columnar
+in a way, because the format is case IDs as columns and map of option ID and
+score as objects in the rows.
+
+(TODO: example here)
+
+Mill is used multiple times using a pull strategy set by the governor. The pull
+strategy controls getting more and more potential options from the sources
+(so-called gives), until it decides it's better to use the already obtained
+options rather than take more.
+
 ## See also
 
 - dev-intro.md (more about the design assumptions etc.)

@@ -10,6 +10,7 @@ the new features.
 
 ### Added
 - CSV gives and API function for sending the contents.
+- Pull strategies and their use for calling recommend mill functions.
 
 ### Changed
 - Gives as lazy sequences.

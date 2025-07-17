@@ -47,6 +47,25 @@ as it cares about the meaning of the data, it should go into preprocess."
                             cols)))
         (range col-length))))
 
+(defn stack
+  "Stack the added columnar data on the bottom of the orig data."
+  [orig & added]
+  (let [first-stacked
+        (if (= (set (keys orig)) (set (keys (first added))))
+          (reduce into {}
+            (map (fn [[col-name orig-objs]]
+                  { col-name
+                    (concat orig-objs (col-name (first added))) })
+                orig))
+          (ex-info
+            "Cannot merge columnar data"
+            { :orig-keys (keys orig)
+              :add-keys (keys (first added)) }))]
+    (if (= 1 (count added))
+      first-stacked
+      (recur first-stacked (rest added)))))
+
+
 ; TODO: we could detect calls on data which already columnar
 (defn records-as-cols
   "Get data from records in a columnar format. Missing values will be nils."
@@ -76,6 +95,15 @@ as it cares about the meaning of the data, it should go into preprocess."
        (recur (rest records)
               (merge new-cols missing-value-cols)
               (inc col-length))))))
+
+(defn sort-rec-options
+  "On a columnar output from recommend functions sort the options by their
+  :score descending."
+  [cases-with-options]
+  (reduce into {}
+          (map (fn [[case-id options]]
+                 { case-id (sort-by :score > options) })
+               cases-with-options)))
 
 (defn keywordify
   "Get list of keywords corresponding to the names (strings). They correspond to

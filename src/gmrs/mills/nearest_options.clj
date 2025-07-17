@@ -41,16 +41,18 @@
    & {:keys [tag-fields number-fields recs-amount]
       :or { tag-fields [], number-fields [], recs-amount 5 }}]
   (assert (:option-id (:io-settings (meta options))))
+  (assert (:case-id (:io-settings (meta cases))))
   (let [option-id-col (:option-id (:io-settings (meta options))),
+        case-id-col (:case-id (:io-settings (meta cases))),
         number-fields-to-transfs
         (reduce into (map (fn [field-name]
                             { field-name
-                              (preprocess/z-logistic-scale
+                             (preprocess/z-logistic-scale
                                (concat (field-name cases)
                                        (field-name options))) })
                           number-fields)),
         encoded-option-cols (encoded-columns options tag-fields
-                                           number-fields-to-transfs),
+                                             number-fields-to-transfs),
         encoded-case-cols (encoded-columns cases tag-fields
                                            number-fields-to-transfs),
         ; a consistent order of multihot-encoded fields
@@ -69,26 +71,25 @@
                       {:option-cols (keys option-cols)
                        :case-cols (keys case-cols)})))
     (run! (fn [row] (if (not (s/valid? ::no-nils row))
-                       (throw (ex-info "bad option row"
-                                       {:row row :options option-cols}))))
+                      (throw (ex-info "bad option row"
+                                      {:row row :options option-cols}))))
           (wrangle/cols-as-vecs (map option-cols encoded-fields)))
     ; Iterate through cases and then options for computing scores
-    (map (fn [case-row]
-           (if (not (s/valid? ::no-nils case-row))
-             (throw (ex-info "bad case row"
-                             {:row case-row :cases case-cols})))
-           (let [scores (reduce into
-                                (map (fn [option-row]
-                                       {option-row
-                                        (stats/pearson-r
-                                          case-row
-                                          (map option-row encoded-fields))})
-                                     option-rows))]
-             (take
-               recs-amount
-               (sort-by :score >
-                        (map (fn [option-row]
-                               {(keyword option-id-col) (option-id-col option-row),
-                                :score (get scores option-row)})
-                             option-rows)))))
-           (wrangle/cols-as-vecs (map case-cols encoded-fields)))))
+    (reduce
+      into {}
+      (map (fn [case-id case-vec]
+             (if (not (s/valid? ::no-nils case-vec))
+               (throw (ex-info "bad case row"
+                               {:row case-vec :cases case-cols})))
+             { case-id
+               (map (fn [option-row]
+                     {
+                      (keyword option-id-col)
+                      (option-id-col option-row),
+                      :score (stats/pearson-r
+                                case-vec
+                                (map option-row encoded-fields))
+                      })
+                   option-rows) })
+           (case-id-col cases)
+           (wrangle/cols-as-vecs (map case-cols encoded-fields))))))
