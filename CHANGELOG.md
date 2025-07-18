@@ -8,6 +8,8 @@ the new features.
 
 ## [Unreleased]
 
+## [0.0.1]
+
 ### Added
 - CSV gives and API function for sending the contents.
 - Pull strategies and their use for calling recommend mill functions.
@@ -23,4 +25,5 @@ the new features.
 ## [0.0.1-init] - 2025-07-09
 
 [Unreleased]: ...
-[0.0.1-init]: initial commit
+[0.0.1]: d7b0fa1
+[0.0.1-init]: (initial commit) 27a8787
