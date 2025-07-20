@@ -7,7 +7,13 @@
             [gmrs.io.getters :as get]
             [gmrs.mills.informed-popularity
              :refer [informed-popularity-recommend]]
-            [gmrs.mills.nearest-options :refer [nearest-options-recommend]]))
+            [gmrs.mills.nearest-options :refer [nearest-options-recommend]]
+            ;[tech.v3.dataset :as ds]
+        ;    [zero-one.geni.core :as g]
+            )
+  ;(:import [org.apache.spark.sql SparkSession Dataset Row]
+  ;         [org.apache.spark.ml.evaluation RegressionEvaluator])
+  (:gen-class))
 
 (def ^:dynamic *GlobalIOSettings* (bs/toy-temp-baseless-io-settings))
 (def ^:dynamic *GlobalIOSetup* (bs/toy-temp-baseless-io-setup))
@@ -82,7 +88,7 @@
                                     *GlobalIOSetup*
                                     govern-name)
          mill ((gov :mill) *EnabledMills*),
-         pull-strat ((gov :pull-strategy) *EnabledPullStrategies),
+         pull-strat ((gov :pull-strategy) *EnabledPullStrategies*),
          options-getter (get/get-options *GlobalIOSettings*
                                          *GlobalIOSetup*)]
      (loop [sample-number 1,
@@ -90,9 +96,12 @@
             accum-recs [],
             remaining-options (rest options-getter)]
        (if (or (empty? new-recs)
-               (not (pull-strat gov accum-rec sample-number)))
-         (take (gov :recs-amount) accum-rec)
+               (not (pull-strat gov accum-recs sample-number)))
+         (take (gov :recs-amount) accum-recs)
          (recur (inc sample-number)
                 (mill case-cols (first remaining-options) gov)
                 (wrangle/sort-rec-options (wrangle/stack accum-recs new-recs))
                 (rest remaining-options)))))))
+
+(defn -main [& args]
+  (println "Running GMRS"))

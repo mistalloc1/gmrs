@@ -8,6 +8,14 @@
   all of the data
 - consider using Spark for dataframes, perhaps Polars in ClojureScript version
 
+### Mills likely to be implemented
+- informed popularity
+- associative rules
+- (text representation through TF-IDF, LDA, embeddings etc.)
+- colllaborative filtering
+- matrix factorization - SVD etc.
+- neural nets? - could be separate
+
 ## Future versions
 
 ### For version 0.1.0
@@ -39,6 +47,7 @@ enough so it can be used from outside of Clojure).
 
 - [x] clean get/get-governor, get/get-options functions as private `defn-`s or separate ns %
 - [x] loading CSVs through API
+- [ ] sort out the basic dataframe and math dependencies we'll use
 - [ ] detect numbers and timestamps in governor, if provided as strings
 - [ ] provide a wrapper performing conversions marked by the governor
 - [x] handle pagination from the gives
