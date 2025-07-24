@@ -50,7 +50,8 @@ dev practices many of us are moored into every day.
 | on log4j conflict |        | col access? (-) check if maintained             |
 | ------------ | ----------- | ----------------------------------------------- |
 | 263M (4.0.0) | spark sql   | (+) dataframes, rich wrangling (+) web UI,      |
-| -> 628M      |             | (-) scala interop, lang changes                 |
+| -> 628M      |             | (-) scala interop, lang changes (-) we have to  |
+|              |             | run the driver/session, closes REPL on sleep    |
 |------------- | ----------- | ----------------------------------------------- |
 | 40M (4.0.0)  | spark mllib | (+) ML impls incl. collab filtering, distance   |
 |on top of sql |             | calcs... (-) need to adapt to their ways        |
@@ -67,3 +68,4 @@ dev practices many of us are moored into every day.
 
 See [benchmark](https://github.com/zero-one-group/geni-performance-benchmark/)
 where tech.ml.dataset and Geni (Spark) show favorably.
+
