@@ -8,6 +8,10 @@ the new features.
 
 ## [Unreleased]
 
+### Changed
+- Moved the math to a separate namespace so Neanderthal can be swapped for
+  something else e.g. for targetting WebAssembly with GraalVM.
+
 ## [0.0.1]
 
 ### Added
