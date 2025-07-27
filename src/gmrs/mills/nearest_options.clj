@@ -2,7 +2,7 @@
   (:require
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
-    [fastmath.stats :as stats]
+    [gmrs.math :as math]
     [gmrs.wrangle :as wrangle]
     [gmrs.preprocess :as preprocess]))
 
@@ -86,7 +86,7 @@
                      {
                       (keyword option-id-col)
                       (option-id-col option-row),
-                      :score (stats/pearson-r
+                      :score (math/pearson-correlation
                                 case-vec
                                 (map option-row encoded-fields))
                       })
