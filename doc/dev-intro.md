@@ -31,9 +31,33 @@ dev practices many of us are moored into every day.
 - Don't get entangled too much into forges such as GitHub and related ceremonies
   - Project planning through todos and the ROADMAP.md file
 
-  ## Dependency assessments
+## Specific considerations
 
-  ### 0.0.*
+### Outside of JVM
+
+One of the goals of GMRS is to at least explore use cases outside of JVM (like
+Python/Django) in the search for an active audience.
+
+Experimental setup for this exists in the 0-0-2-graalvm-image branch, based on
+[roman01la/graal-clojure-wasm](https://github.com/roman01la/graal-clojure-wasm).
+Note:
+
+- The GraalVM compiler stalls on anything dependent on org.bytedeco.javacpp
+  which currently includes both Neanderthal and Fastmath (maybe to prior to
+  3.* which is still in alpha).
+- It also seems to eat even the unreferenced clj files and deps.edn deps, so
+  they would need to be excluded somehow for this alias.
+- On the experimental branch, I included alternative math ns implementations in
+  Fastmath and pure Clojure. The latter compiles if enabled for all math imports.
+- I included an experimental `wasm_test.py` file using the Python Wasmtime
+  library. It fails because we cannot turn on the gc WASM proposal. The progress
+  needs to be tracked on the [proposals page](https://docs.wasmtime.dev/stability-wasm-proposals.html)
+  and [Python API docs](https://bytecodealliance.github.io/wasmtime-py/#wasmtime.Config).
+
+
+Due to this, for now we try to limit the dependencies except for when necessary.
+
+### Dependency assessment for 0.0.2
 
   Base uberjar size (0.0.1): 365M
 
