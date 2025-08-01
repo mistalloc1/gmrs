@@ -32,8 +32,13 @@
          (diag-potential-datetime "2023-05-05" example-attrib-map)))
   (is (= {:time-local 1 :needs-conv 1}
          (diag-potential-datetime "12:05" example-attrib-map)))
+  (is (= {:time-local 1 :needs-conv 1}
+         (diag-potential-datetime "   12:05  " example-attrib-map)))
   (is (= {:date-zoned-with-time 1 :needs-conv 1}
          (diag-potential-datetime "2004-11-13T00:00:00+00:00"
+                                  example-attrib-map)))
+  (is (= {:date-zoned-with-time 1 :needs-conv 1}
+         (diag-potential-datetime "     2004-11-13T00:00:00+00:00  "
                                   example-attrib-map))))
 
 (deftest test-diag-string-and-update
@@ -43,10 +48,10 @@
   (is (= {:str 5 :date-local 3 :tags 1
           :maybe-tags-map {"635" 1 "364" 1}}
          (diag-string-and-update "635|364" example-attrib-map 10)))
-  (is (= {:str 5 :date-local 3 :integer 1 :float 1 :num 1 :needs-conv 1 :tags 1
+  (is (= {:str 5 :date-local 3 :integer 1 :float 1 :needs-conv 1 :tags 1
           :maybe-tags-map {"635364" 1}}
          (diag-string-and-update "635364" example-attrib-map 10)))
-  (is (= {:str 5 :date-local 3 :float 1 :num 1 :needs-conv 1 :tags 1
+  (is (= {:str 5 :date-local 3 :float 1 :needs-conv 1 :tags 1
           :maybe-tags-map {"635.364" 1}}
          (diag-string-and-update "635.364" example-attrib-map 10)))
   (is (= {:str 5 :date-local 4 :needs-conv 1 :tags 1
@@ -62,7 +67,7 @@
 (deftest test-diag-all-values
   (is (= #{:float}
          (diag-all-values [45.3 124.3 25643.43 3655.5 43245.4])))
-  (is (= #{:float :needs-conv :str :num}
+  (is (= #{:float :needs-conv :str}
          (diag-all-values ["45.3" "124.3" "25643.43" "3655.5" "43245.4"])))
   (is (= #{:float :needs-conv :str}
          (diag-all-values ["45.3 " "124.3 " "25643.43 " "3655.5 " "43245.4"]))))

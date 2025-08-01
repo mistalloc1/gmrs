@@ -31,6 +31,7 @@
   value."
   [value attrib-map]
   (if (heuristic-is-datetime? value)
+    (let [value (str/trim value)]
     (merge (try (java.time.LocalDate/parse value)
                 (bump-for [:date-local :needs-conv] attrib-map)
                 (catch java.time.format.DateTimeParseException _ {}))
@@ -39,7 +40,7 @@
                 (catch java.time.format.DateTimeParseException _ {}))
            (try (java.time.ZonedDateTime/parse value)
                 (bump-for [:date-zoned-with-time :needs-conv] attrib-map)
-                (catch java.time.format.DateTimeParseException _ {})))))
+                (catch java.time.format.DateTimeParseException _ {}))))))
 
 (defn is-numtype? [str-value nonnum-chars parse-fun]
   (and (every? #(or (Character/isDigit %)
@@ -73,10 +74,12 @@
          (if (< (count value) 32)
            (reduce into {}
                    [(diag-potential-datetime value attrib-map)
-                    (when (is-numtype? value #{\- \+} Integer/parseInt)
-                      (bump-for [:num :integer :needs-conv] attrib-map))
-                    (when (is-numtype? value #{\- \+ \e \.} Float/parseFloat)
-                      (bump-for [:num :float :needs-conv] attrib-map))]))
+                    (when (is-numtype? value #{\- \+ \space \tab}
+                                       Integer/parseInt)
+                      (bump-for [:integer :needs-conv] attrib-map))
+                    (when (is-numtype? value #{\- \+ \e \. \space \tab}
+                                       Float/parseFloat)
+                      (bump-for [:float :needs-conv] attrib-map))]))
          (if (and (< (count value) 2048)
                   (not (and (number? (:tags attrib-map))
                             (neg? (:tags attrib-map)))))
@@ -105,6 +108,7 @@
      (recur
        (rest coll)
        (condp apply [(first coll)]
-         number? (update attrib-map :num init-or-inc-if-pos)
+         float? (update attrib-map :float init-or-inc-if-pos)
+         integer? (update attrib-map :int init-or-inc-if-pos)
          string? (diag-string-and-update (first coll) attrib-map full-size))
        full-size))))

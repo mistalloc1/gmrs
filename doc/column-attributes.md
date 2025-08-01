@@ -8,7 +8,6 @@ of processing.
 programatically with acceptable correctness should be configurable by the user
 instead.
 
-- `:num` - numeric - TODO: tell when integer and float happens - probably decision needed in code
 - `:integer` - integer
 - `:float` - float
 - `:tags` - default string interpretation, separated by pipes (|)
