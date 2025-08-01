@@ -8,13 +8,18 @@ of processing.
 programatically with acceptable correctness should be configurable by the user
 instead.
 
-- `:num` - numeric
+- `:num` - numeric - TODO: tell when integer and float happens - probably decision needed in code
+- `:integer` - integer
+- `:float` - float
 - `:tags` - default string interpretation, separated by pipes (|)
-  TODO: assess the number of potential tags, to avoid an explosion
+- `:str` - string
+- `:needs-conv` - the column needs conversion from string to the indicated format
+- Time attributes:
+  - `:date-zoned-with-time`
+  - `:date-local`
+  - `:time-local`
 
 ### To implement
 
-- `:time`
 - `:past` - time, containing timestamps from the past
 - `:future` - time, containing timestamps from the future
-- `:needs-conv` - the column needs conversion from string to the indicated format

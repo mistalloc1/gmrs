@@ -6,7 +6,7 @@
 - rework CSV funcs to handle different delimiters and dialects
 - perhaps in recommending the gives should be saved and stateful, to go through
   all of the data
-- consider using Spark for dataframes, perhaps Polars in ClojureScript version
+- more datetime formats
 
 ### Mills likely to be implemented
 - informed popularity
@@ -50,11 +50,11 @@ enough so it can be used from outside of Clojure).
 - [x] sort out the basic dataframe and math dependencies we'll use (for now, see dev-intro)
 - [ ] detect numbers and timestamps in governor, if provided as strings
 - [ ] provide a wrapper performing conversions marked by the governor
+- [ ] handle nils in preprocessing and/or existing mills
 - [x] handle pagination from the gives
 - [x] strategy for consuming the right amount of pages
 - [ ] extend preprocessing for handling data from EDGAR
 - [ ] extend preprocessing for handling data from AniD
-- [ ] handle nils in preprocessing and/or existing mills
 - [ ] add some type guards (and replace existing) using Clojure spec
 - [ ] setup JDBC driver for gives and sends
 - [ ] create instructions for web Clojure integration

@@ -2,10 +2,9 @@
 meaning-agnostic things about reformatting etc. should go into wrangle."
 
 (ns gmrs.preprocess
-  (:require
-    [clojure.set :as set]
-    [clojure.string :as str]
-    [gmrs.math :as math]))
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
+            [gmrs.math :as math]))
 
 ; TODO: currently none of this handles nulls
 
@@ -32,7 +31,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
          zeros (vec (repeat (count tags-column) 0.0))]
      (dorun (map-indexed
               (fn [row-idx row-val]
-                (run! 
+                (run!
                   (fn [tag-col-name]
                     (if (not (@tag->cols tag-col-name))
                       (swap! tag->cols assoc tag-col-name zeros))
