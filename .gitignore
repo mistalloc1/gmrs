@@ -3,6 +3,8 @@
 /checkouts
 /dev
 /.cpcache
+/.lsp
+/.clj-kondo
 pom.xml
 pom.xml.asc
 .nrepl-port

@@ -48,7 +48,7 @@ enough so it can be used from outside of Clojure).
 - [x] clean get/get-governor, get/get-options functions as private `defn-`s or separate ns %
 - [x] loading CSVs through API
 - [x] sort out the basic dataframe and math dependencies we'll use (for now, see dev-intro)
-- [ ] detect numbers and timestamps in governor, if provided as strings
+- [x] detect numbers and timestamps in governor, if provided as strings
 - [ ] provide a wrapper performing conversions marked by the governor
 - [ ] handle nils in preprocessing and/or existing mills
 - [x] handle pagination from the gives

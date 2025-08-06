@@ -2,6 +2,7 @@
   (:require
     [clojure.set :as set]
     [gmrs.io.getters :refer [getter]]
+    [gmrs.data-diag :refer [diag-all-values]]
     [gmrs.wrangle :as wrangle]))
 
 (defn target-top-heavy-pull-strategy
@@ -48,10 +49,7 @@
   (let [sample (first (getter io-settings give-sources))]
     (reduce into
             (map (fn [col-name col]
-                   {col-name
-                    (filter some?
-                            [(if (every? number? col) :num)
-                             (if (every? string? col) :tags)])})
+                   {col-name (diag-all-values col)})
                  (keys sample)
                  (vals sample)))))
 

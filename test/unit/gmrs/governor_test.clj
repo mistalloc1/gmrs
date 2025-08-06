@@ -68,15 +68,23 @@
 
 ; TODO: test/deal with nils, mixed columns
 (deftest test-diagnose-columns-from-source
-  (is (= {:name '(:tags) :country '(:tags) :checkin-until '(:tags)
-          :amenities '(:tags) :avg-price '(:num) :row-id '(:num) }
+  (is (= {:name #{:str},
+          :country #{:tags :str},
+          :checkin-until #{:str :needs-conv :time-local},
+          :avg-price #{:int},
+          :amenities #{:str},
+          :row-id #{:int}}
          (diagnose-columns-from-source hotel-governor
                                        cmd/*GlobalIOSettings*
                                        hotel-option-gives))
       "options")
-  (is (= {:name '(:tags) :country '(:tags) :checkin-until '(:tags)
-          :amenities '(:tags) :travel-purpose '(:tags) :avg-price '(:num)
-           :age '(:num)}
+  (is (= {:name #{:str},
+          :country #{:tags :str},
+          :checkin-until #{:str :needs-conv :time-local},
+          :avg-price #{:int},
+          :amenities #{:str},
+          :age #{:int},
+          :travel-purpose #{:tags :str}}
          (diagnose-columns-from-source hotel-governor
                                        cmd/*GlobalIOSettings*
                                        hotel-case-gives))
@@ -92,12 +100,20 @@
   (is (= { :recs-amount 2
           :score-weakness-tolerance 0.02 :pull-strategy :target-top-heavy
           :option-columns
-          {:name '(:tags) :country '(:tags) :checkin-until '(:tags)
-           :amenities '(:tags) :avg-price '(:num) :row-id '(:num) }
+          {:name #{:str},
+           :country #{:tags :str},
+           :checkin-until #{:str :needs-conv :time-local},
+           :avg-price #{:int},
+           :amenities #{:str},
+           :row-id #{:int}}
           :case-columns
-          {:name '(:tags) :country '(:tags) :checkin-until '(:tags)
-           :amenities '(:tags) :travel-purpose '(:tags) :avg-price '(:num)
-           :age '(:num)}
+          {:name #{:str},
+          :country #{:tags :str},
+          :checkin-until #{:str :needs-conv :time-local},
+          :avg-price #{:int},
+          :amenities #{:str},
+          :age #{:int},
+          :travel-purpose #{:tags :str}}
           :inter-columns [] }
          (update-columns-diagnostics hotel-governor
                                      cmd/*GlobalIOSettings*
