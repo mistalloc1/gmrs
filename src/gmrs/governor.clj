@@ -5,34 +5,38 @@
     [gmrs.data-diag :refer [diag-all-values]]
     [gmrs.wrangle :as wrangle]))
 
+(defn sum-scores-with-decreasing-weight
+  "Sum recommendation scores at indices from idx to final-idx. The recommendations
+  should be as a standard map of case -> [option maps with :score]"
+  [running-sum recommendations idx final-idx]
+  (if (= idx (inc final-idx))
+    running-sum
+    (recur (+ running-sum
+              (if (>= (inc idx) scored-opts-count)
+                0.0
+                (/
+                 (reduce + (map #(:score (nth % idx))
+                                (vals recommendations)))
+                 (inc idx))))
+           recommendations (inc idx) final-idx)))
+
 (defn target-top-heavy-pull-strategy
   "Pages pull strategy based on linearly increasing the tolerance on distance
   from the target recommendation score (1.0). Top 3 recommendations are
   considered for each case, with descending weight.
 
-  Current-scores should be sorted desceding. Returns binary decision on whether
-  to pull a further sample."
-  [gov current-scores sample-number]
-  (let [options-count (wrangle/cols-row-count current-scores),
-        decreasing-weight (fn [sum scores-map idx final-idx]
-                            (if (= idx (inc final-idx))
-                              sum
-                              (recur (+ sum
-                                        (if (>= (inc idx) options-count)
-                                          0.0
-                                          (/
-                                           (reduce + (map #(:score (nth % idx))
-                                                          (vals scores-map)))
-                                           (inc idx))))
-                                     scores-map (inc idx) final-idx))),
+  current-recs should be sorted with wrangle/sort-rec-options. Returns binary
+  decision on whether to pull a further sample."
+  [gov current-recs step-number]
+  (let [scored-opts-count (wrangle/cols-row-count current-recs),
         cost-of-recommendation (- 1.0
-                                  (if (or (empty? current-scores)
-                                          (zero? options-count))
+                                  (if (or (empty? current-recs)
+                                          (zero? scored-opts-count))
                                     0.0
-                                    (/ (decreasing-weight 0.0 current-scores
-                                                          0 3)
-                                       options-count))),
-        cost-of-next-pull (* (:score-weakness-tolerance gov) sample-number)]
+                                    (/ (sum-scores-with-decreasing-weight
+                                         0.0 current-recs 0 3)
+                                       scored-opts-count))),
+        cost-of-next-pull (* (:score-weakness-tolerance gov) step-number)]
     (> cost-of-recommendation cost-of-next-pull)))
 
 (defn new-governor

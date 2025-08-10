@@ -51,6 +51,7 @@ enough so it can be used from outside of Clojure).
 - [x] detect numbers and timestamps in governor, if provided as strings
 - [ ] provide a wrapper performing conversions marked by the governor
 - [ ] handle nils in preprocessing and/or existing mills
+- [ ] allow describing cases through their previous interacted options
 - [x] handle pagination from the gives
 - [x] strategy for consuming the right amount of pages
 - [ ] extend preprocessing for handling data from EDGAR
