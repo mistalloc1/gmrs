@@ -100,7 +100,7 @@
   to them can be suggested.
 
   It's best to pass the *interactions* already loaded for the assessment to the
-  mill.
+  mill. But NOTE if so, all the interactions must be with one of the cases!
 
   The *pull-strategy* is a function that takes only the current-scores and step
   number. It can be a 'raw' pull strategy function partialled with the guvna.
@@ -118,25 +118,28 @@
      {}))
   ([cases inters options
    gettable-inters gettable-options
+   ;; Case inters map case id -> interaction IDs. The opts are only and all the
+   ;; ones in the options arg.
    case-inters inter-opt-ids loose-opt-ids
    pull-strategy step-number last-step
    recommendations]
   (let [io-settings (:io-settings (meta options)),
         inter-option (io-settings :inter-option),
-        inter-case (io-settings :inter-case)
+        inter-case (io-settings :inter-case),
         continue? (pull-strategy recommendations step-number)]
     (cond
       ;; Not enough inters to assess the cases.
       (and continue? (not= last-step :more-inters)
-           (not= (count case-inters) (count cases)))
+           (not= (count case-inters) (count cases))) ; TODO: always 1 enough?
       (let [new-inters (first gettable-inters), ; expected to be to cases
             new-case-inters (reduce
-                              (fn [m inter-n]
-                                (update m (inter-case (nth inter-n new-inters))
+                              (fn [m inter]
+                                (update m (inter-case inter)
                                         (fn [old] (conj old inter-n))))
-                              case-inters
-                              (range (count new-inters)))]
-        (recur cases (into inters new-inters) options
+                              case-inters new-inters),
+            only-relevant-inters ()]
+        ; FIXME: reject uncased
+        (recur cases (into inters only-relevant-inters) options
                (rest gettable-inters) gettable-options
                case-inters inter-opt-ids loose-opt-ids
                pull-strategy (inc step-number) :more-inters
@@ -147,18 +150,15 @@
              ;; More interacted options needed
              (some (complement inter-opt-ids) ; see if their details are unknown
                    ;; set of known inter options:
-                   (reduce into #{} (map (fn [[_ inters]]
-                                           (map inter-option inters))
-                                         case-inters)))
+                   (reduce into #{} (map inter-option inters)))
              ;; More loose recommendable options needed
              (empty? loose-options)))
       (let [new-opts (first gettable-options),
             new-inter-opt-ids
             (into inter-opt-ids
                   (filter (fn [opt-id]
-                            (some = (map inter-option
-                                         (filter (vec (vals case-inters))
-                                                 inters))))
+                            (some #(= % opt-id)
+                                  (map inter-option interactions)))
                           (map (io-settings :option-id) new-opts))),
             new-loose-opt-ids (filter (complement new-inter-opt-ids)
                                       (map (io-settings :option-id) new-opts))]
@@ -178,6 +178,11 @@
              (into recommendations
                    (let [opt-recs (nearest-options-recommend interacted-options
                                                              loose-options)]
+                     ;; The score for an option is always its mean score against
+                     ;; the known target (already interacted) options. This
+                     ;; approximation should get more reliable with retries and
+                     ;; pulling more interactions and options for each case (by
+                     ;; law of large numbers).
                      (reduce
                        into {}
                        ; FIXME: update/concat!
