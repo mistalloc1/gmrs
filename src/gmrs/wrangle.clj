@@ -3,11 +3,17 @@ as it cares about the meaning of the data, it should go into preprocess."
 
 (ns gmrs.wrangle
   (:require [clojure.set :as set]
-            [clojure.string :as str])
-  (:use [clojure.test :only [is]]))
+            [clojure.string :as str]))
 
 (defn all-same-length? [& xs]
   (= 1 (count (set (map count xs)))))
+
+(defn average-score
+  "Compute the average score, ignoring nils."
+  [coll]
+  (let [coll (filter true? coll)]
+    (if (empty? coll) 0.0
+      (/ (reduce + 0.0 coll) (count coll)))))
 
 (defn cols-row-count
   "Get the length of the column, guaranteeing it's the same everywhere."
@@ -26,7 +32,7 @@ as it cares about the meaning of the data, it should go into preprocess."
         zeros (repeat row-count 0)]
     (reduce into
             (map (fn [col-name]
-                   {col-name 
+                   {col-name
                     (or (cols col-name) zeros)})
                  (set/union (keys cols) col-names)))))
 
@@ -79,13 +85,13 @@ as it cares about the meaning of the data, it should go into preprocess."
            (reduce into
                    (map
                      (fn [field-name]
-                       { field-name 
+                       { field-name
                         (conj (or (existing-cols field-name)
                                   (vec (repeat col-length nil)))
                               (rec field-name)) })
                      (keys rec))),
            missing-value-cols
-           (reduce into 
+           (reduce into
                    (concat [{}] ; ensure we get a map from no cols
                            (map (fn [col-name]
                                   { col-name
@@ -96,14 +102,47 @@ as it cares about the meaning of the data, it should go into preprocess."
               (merge new-cols missing-value-cols)
               (inc col-length))))))
 
-(defn sort-rec-options
-  "On a columnar output from recommend functions sort the options by their
-  :score descending."
-  [cases-with-options]
+(defn sorted-rec-options
+  "Given a scoring table, return a map of cases to vectors of maps { (options id)
+  :score } sorted by :score descending."
+  [scoring-table]
   (reduce into {}
-          (map (fn [[case-id options]]
-                 { case-id (sort-by :score > options) })
-               cases-with-options)))
+          (map (fn [case-id]
+                 { case-id
+                   (sort-by
+                     :score >
+                     (map (fn [opt-id] { (:option-id (:io-settings
+                                                       (meta scoring-table)))
+                                         opt-id,
+                                         :score (get scoring-table
+                                                     [case-id opt-id]) })
+                          (get (meta scoring-table) :options))) })
+               (get (meta scoring-table) :cases))))
+
+(defn options-to-cases-scoring-table
+  "Given a scoring table made option-to-option, derive scores for the recommended
+  options applicable when recommending them for the cases; do this by averaging
+  the scores for the options associated with the case."
+  [scoring-table cases-options]
+  (with-meta
+    (reduce
+      into {}
+      (map (fn [[case-id case-assoc-options]]
+             (reduce
+               into {}
+               (map (fn [rec-opt-id]
+                      { [case-id rec-opt-id]
+                        (average-score
+                          (map (fn [ass-opt-id]
+                                 (if-let [scoring (get scoring-table
+                                                       [ass-opt-id rec-opt-id])]
+                                   (:score scoring)
+                                   nil))
+                               case-assoc-options)) })
+                    (:options (meta scoring-table)))))
+           cases-options))
+    { :cases (keys cases-options) :options (:options (meta scoring-table))
+      :io-settings (:io-settings (meta scoring-table)) }))
 
 (defn keywordify
   "Get list of keywords corresponding to the names (strings). They correspond to

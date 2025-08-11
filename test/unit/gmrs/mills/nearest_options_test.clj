@@ -77,7 +77,7 @@
 (deftest test-nearest-options-recommend
   (testing "one feature (genres)"
     (let [recs
-          (wrangle/sort-rec-options
+          (wrangle/sorted-rec-options
             (nearest-options-recommend example-cases example-options
                                        {:tag-fields '(:genres)
                                         :number-fields ()}))]
@@ -99,7 +99,7 @@
 6
   (testing "two features (genres, city)"
     (let [recs
-          (wrangle/sort-rec-options
+          (wrangle/sorted-rec-options
             (nearest-options-recommend example-cases example-options
                                        {:tag-fields '(:genres :city)
                                         :number-fields ()
@@ -118,10 +118,10 @@
           "Kraków Rock for sara")
       (is (neg? (:score (second (recs "sara/kraków"))))
           "Warsaw Jazz for sara")))
- 
+
   (testing "three features (genres, city, volume)"
     (let [recs
-          (wrangle/sort-rec-options
+          (wrangle/sorted-rec-options
             (nearest-options-recommend example-cases example-options
                                        {:tag-fields '(:genres :city)
                                         :number-fields '(:volume)
