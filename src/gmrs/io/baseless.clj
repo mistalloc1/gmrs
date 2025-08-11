@@ -3,9 +3,9 @@
 ; NOTE: option-id cannot be :score
 (defn toy-temp-baseless-io-settings []
   { :option-id :iid, :case-id :uid, :govern-id :gid,
-   :dec-option :optid, :dec-case :caseid, :dec-agree :agree,
-   :inter-option :optid, :inter-case :caseid
-   :page-size 32 })
+    :dec-option :optid, :dec-case :caseid, :dec-agree :agree,
+    :inter-option :optid, :inter-case :caseid
+    :page-size 32 })
 
 ; TODO: later move this to io-setup source file so it's more general
 ; NOTE: these are atoms and not refs intentionally, we never want to assume

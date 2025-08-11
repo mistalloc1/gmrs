@@ -108,6 +108,7 @@
   Repeating the same *step* is assumed to mean that we received empty data, which
   means that we have to bail with the current recommendations."
   ; TODO:consider the scenario of getting the same loose-options multiple times
+  ; TODO:when do we want to retake more interactions?
   ; TODO:inspection or logging
   ([cases inters gettable-inters gettable-options pull-strategy]
    (nearest-options-from-interactions-mill
@@ -138,8 +139,9 @@
                                 (update m (inter-case inter)
                                         (fn [old] (conj old inter))))
                               case-inters new-inters),
-            only-relevant-inters ()]
-        ; FIXME: reject interaction not related to a target case
+            only-relevant-inters
+            (filter (fn [inter] (get case-inters (inter-case inter)))
+                    new-case-inters)]
         (recur cases (into inters only-relevant-inters) options
                (rest gettable-inters) gettable-options
                case-inters inter-opt-ids loose-opt-ids
@@ -197,7 +199,7 @@
                   { :cases (vec (set (into (:cases (meta recommendations))
                                            (:cases (meta opt-recs)))))
                     :options (vec (set (into (:options (meta recommendations))
-                                           (:options (meta opt-recs)))))
+                                             (:options (meta opt-recs)))))
                     :io-settings (:io-settings recommendations) })))
 
       ;; Recommendations OK or a repeated step

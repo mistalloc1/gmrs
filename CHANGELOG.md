@@ -8,6 +8,10 @@ the new features.
 
 ## [Unreleased]
 
+### Added
+- Data diagnostics recognize numbers and some datetime formats
+- A separate mill function for recommending options similar to the known interactions
+
 ### Changed
 - Moved the math to a separate namespace so Neanderthal can be swapped for
   something else e.g. for targetting WebAssembly with GraalVM.
