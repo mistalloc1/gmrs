@@ -21,11 +21,19 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   (assert (:sd transf))
   (math/z-logistic-scale coll (:mean transf) (:sd transf)))
 
+;;;
+;;; Column preprocessing functions.
+;;;
+
+(defn find-and-apply-z-logistic-scale
+  [coll]
+  (apply-z-logistic-scale coll (z-logistic-scale coll)))
+
 ; TODO: profile against a cleaner impl (this is the oldest code in the project)
 (defn multihot-from-tags
   "Given a column of tags separated by pipes, return a mapping of columns to
   vectors to 0s and 1s. The col names are prefix+$tag."
-  ([tags-column] (multihot-from-tags tags-column "tag-"))
+  ([tags-column] (multihot-from-tags tags-column "proc-"))
   ([tags-column prefix]
    (let [tag->cols (atom {})
          zeros (vec (repeat (count tags-column) 0.0))]
@@ -33,7 +41,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
               (fn [row-idx row-val]
                 (run!
                   (fn [tag-col-name]
-                    (if (not (@tag->cols tag-col-name))
+                    (when (not (@tag->cols tag-col-name))
                       (swap! tag->cols assoc tag-col-name zeros))
                     (swap! tag->cols
                            update-in [tag-col-name]

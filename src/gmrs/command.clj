@@ -4,6 +4,7 @@
             [gmrs.governor :as gv]
             [gmrs.wrangle :as wrangle]
             [gmrs.io.baseless :as bs]
+            [gmrs.preprocess :as preproc]
             [gmrs.io.getters :as get]
             [gmrs.mills.informed-popularity
              :refer [informed-popularity-recommend]]
@@ -19,10 +20,15 @@
 (def ^:dynamic *GlobalIOSetup* (bs/toy-temp-baseless-io-setup))
 
 (def ^:dynamic *EnabledMills*
-  { :informed-popularity informed-popularity-recommend 
+  { :informed-popularity informed-popularity-recommend
     :nearest-options nearest-options-recommend })
+
 (def ^:dynamic *EnabledPullStrategies*
   { :target-top-heavy gv/target-top-heavy-pull-strategy })
+
+(def ^:dynamic *EnabledTagPreprocessing*
+  { :tags preproc/multihot-from-tags
+    :number-scale preproc/find-and-apply-z-logistic-scale })
 
 (defn new-governor! [govern-name]
   (run! (fn [send-fun]

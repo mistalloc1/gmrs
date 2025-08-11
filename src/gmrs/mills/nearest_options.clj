@@ -38,8 +38,8 @@
 (defn nearest-options-recommend
   [cases options ; with :io-settings metadata
    ; those we expect from the governor
-   & {:keys [tag-fields number-fields recs-amount]
-      :or { tag-fields [], number-fields [], recs-amount 5 }}]
+   & {:keys [tag-fields number-fields]
+      :or { tag-fields [], number-fields [] }}]
   (assert (:option-id (:io-settings (meta options))))
   (assert (:case-id (:io-settings (meta cases))))
   (let [option-id-col (:option-id (:io-settings (meta options))),
@@ -66,11 +66,11 @@
               (wrangle/fill-missing-cols encoded-case-cols encoded-fields)),
         option-rows (wrangle/cols-as-rows option-cols)]
     ; Validation
-    (if (not (wrangle/all-same-length? option-cols case-cols))
+    (when (not (wrangle/all-same-length? option-cols case-cols))
       (throw (ex-info "not the same number of cases and option encoded cols"
                       {:option-cols (keys option-cols)
                        :case-cols (keys case-cols)})))
-    (run! (fn [row] (if (not (s/valid? ::no-nils row))
+    (run! (fn [row] (when (not (s/valid? ::no-nils row))
                       (throw (ex-info "bad option row"
                                       {:row row :options option-cols}))))
           (wrangle/cols-as-vecs (map option-cols encoded-fields)))
@@ -80,7 +80,7 @@
       (reduce
         into {}
         (map (fn [case-id case-vec]
-               (if (not (s/valid? ::no-nils case-vec))
+               (when (not (s/valid? ::no-nils case-vec))
                  (throw (ex-info "bad case row"
                                  {:row case-vec :cases case-cols})))
                (map (fn [option-row]

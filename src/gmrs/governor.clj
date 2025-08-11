@@ -1,6 +1,7 @@
 (ns gmrs.governor
   (:require
     [clojure.set :as set]
+    [clojure.string :refer [starts-with?]]
     [gmrs.io.getters :refer [getter]]
     [gmrs.data-diag :refer [diag-all-values]]
     [gmrs.wrangle :as wrangle]))
@@ -46,7 +47,7 @@
     :score-weakness-tolerance 0.02 :pull-strategy :target-top-heavy })
 
 (defn diagnose-columns-from-source
-  "Get column diagnostics.
+  "Get diagnostics for columns that are supplied from a give functions.
 
   For possible column attributes see docs/column-attibutes.md."
   [govern io-settings give-sources]
@@ -67,6 +68,87 @@
                           old-govern io-settings case-gives),
           :inter-columns (diagnose-columns-from-source
                            old-govern io-settings inter-gives)}))
+
+(defn execute-preprocessing-instructions
+  "Apply all functions from tags-table to the columns in col-sets, that are
+  indicated by tags in the cols-tables which map column names to data type tags.
+
+  Special tags in the form of :group-XYZ guarantee that all cols tagged this
+  way will be seamlessly preprocessed together - for example for encoding tags
+  or scaling number features.
+
+  The preprocessing functions get the column sequence as their argument. They
+  can return either the resulting vector, or a map of :proc-X -> vector, which
+  will then all be renamed to :col-name-X in the final col-sets.
+
+  The metadata of original col-sets will be preserved."
+  [tags-table cols-tables col-sets]
+  (letfn [(get-col-groups [accum-groups-map cols-tables set-n]
+            (if (empty? cols-tables)
+              accum-groups-map
+              (recur (reduce
+                       into {}
+                       (map (fn [[col-name tags]]
+                              (if-let [group-key
+                                       (some (fn [tag] (starts-with? (name tag)
+                                                                     "group"))
+                                             tags)]
+                                (update-in accum-groups-map [group-key]
+                                           conj { :col-name col-name
+                                                  :set set-n })
+                                (update-in accum-groups-map
+                                           [(key (str "ungroup" set-n col-name))]
+                                           conj { :col-name col-name
+                                                  :set set-n })))
+                            (first cols-tables)))
+                     (rest cols-tables) (inc set-n)))),
+          (unroll-col-group [result-col-sets group-entries]
+            (reduce
+              (fn [group-col-sets {:keys [col-name set-n done]}]
+                (if (map? done)
+                  ;; The multi-column "proc-" case.
+                  (let [final-col-names
+                        (map (fn [proc-key] (keyword (str
+                                                       (name col-name) "-"
+                                                       ;; cut "proc-"
+                                                       (subs (name proc-key) 5))))
+                             (keys done))]
+                    (update group-col-sets set-n merge
+                            (zipmap final-col-names (vals done))))
+                  ;; The base one-vector result case.
+                  (assoc-in group-col-sets [set-n col-name] done)))
+              result-col-sets
+              group-entries)),
+          (unroll-col-groups [groups]
+            (reduce unroll-col-group
+                    (mapv (fn [col-set] (with-meta {} (meta col-set))) col-sets)
+                    groups))]
+    (unroll-col-groups
+      (map
+        (fn [group]
+          (let [all-cols (map (fn [{:keys [col-name set-n]}]
+                                (get (nth cols-tables set-n)
+                                     col-name))
+                              group),
+                starts-in-lump (reductions + 0 (map count group))
+                set-indices-in-lump (map vector
+                                         (butlast starts-in-lump)
+                                         (rest starts-in-lump)),
+                cols-lumped (apply concat all-cols),
+                processed (reduce
+                            (fn [coll tag] ((get tags-table tag identity)
+                                            coll))
+                            cols-lumped
+                            ;; NOTE: tags must be the same for every column!
+                            (get (nth cols-tables (-> group first :set-n))
+                                 (-> group first :col-name)))]
+            (map-indexed (fn [i entry]
+                           (assoc entry :done
+                                  (apply wrangle/slice
+                                         (into [processed]
+                                               (nth set-indices-in-lump i)))))
+                         group)))
+        (vals (get-col-groups {} col-sets 0))))))
 
 (defn choose-and-prepare-mill
   [old-govern]

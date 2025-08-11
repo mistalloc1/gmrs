@@ -53,6 +53,20 @@ as it cares about the meaning of the data, it should go into preprocess."
                             cols)))
         (range col-length))))
 
+(defn slice
+  "Get elements from start until (not including) end. Works on column sets and
+  native collections."
+  [coll start end]
+  (condp apply [coll]
+    vector? (subvec coll start end),
+    #(and (map? %) (every? vector? (vals %)))
+    (reduce into {} (map (fn [[col-name col]]
+                           { col-name (subvec col start end) })
+                         coll)),
+    :else (->> coll
+               (drop-last (- (count coll) end))
+               (drop start))))
+
 (defn stack
   "Stack the added columnar data on the bottom of the orig data."
   [orig & added]
