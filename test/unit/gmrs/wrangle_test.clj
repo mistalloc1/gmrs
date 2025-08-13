@@ -12,7 +12,7 @@
                              :genres-jazz [0 1], :city-gdańsk [1 0],
                              :city-kraków [0 1]}))))
 
-(deftest test-fill-missing-cols 
+(deftest test-fill-missing-cols
   (is (= {:genres-rock [1 0], :genres-funk [0 0], :genres-dub [1 0]}
          (fill-missing-cols {:genres-rock [1 0], :genres-dub [1 0]}
                              (list :genres-rock :genres-funk :genres-dub)))
@@ -24,7 +24,7 @@
                              (list :genres-rock :genres-funk :genres-dub)))
       "preserving non-specified but present column"))
 
-(deftest test-cols-as-rows 
+(deftest test-cols-as-rows
   (is (= {:genres-rock 1,
           :genres-dub 1,
           :genres-rap 0,
@@ -40,17 +40,24 @@
   (is (= 0 (count (cols-as-rows {}))) "no columns")
   (is (= 0 (count (cols-as-rows {:a [] :b []}))) "empty columns"))
 
-(deftest test-cols-as-vecs
+(deftest test-cols-as-row-vecs
   (is (= '((1 0 1) (1 0 0) (1 0 2))
-         (cols-as-vecs '([1 1 1] [0 0 0] [1 0 2])))
+         (cols-as-row-vecs '([1 1 1] [0 0 0] [1 0 2])))
       "base case")
   (is (= (list 1 1 0 0 0 1 0)
-         (first (cols-as-vecs (vals 
+         (first (cols-as-row-vecs (vals
                                  {:genres-rock [1 0], :genres-dub [1 0],
                                   :genres-rap '(0 0), :genres-jazz [0 1],
                                   :city-warsaw '(0 0), :city-gdańsk [1 0],
                                   :city-kraków [0 1]}))))
-      "mixed lists and vecs in input"))
+      "mixed lists and vecs in input")
+  (is (= (list 1 1 0 0 0 1 0)
+         (first (cols-as-row-vecs {:genres-rock [1 0], :genres-dub [1 0],
+                                  :genres-rap '(0 0), :genres-jazz [0 1],
+                                  :city-warsaw '(0 0), :city-gdańsk [1 0],
+                                  :city-kraków [0 1]}
+                                 )))
+      "a full column map as input"))
 
 (deftest test-records-as-cols
   (is (= { :kind ["fish" "tiger"]

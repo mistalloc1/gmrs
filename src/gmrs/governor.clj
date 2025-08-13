@@ -94,7 +94,7 @@
                                    :set-n set-n })))
              accum-groups-map
              (first set-taggings))
-           (rest set-taggings) (inc set-n)))))
+           (rest set-taggings) (inc set-n))))
 
 (defn execute-preprocessing-instructions
   "Apply all functions from tags-table to the columns in col-sets, that are

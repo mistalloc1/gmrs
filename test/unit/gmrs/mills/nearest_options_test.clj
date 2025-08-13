@@ -1,11 +1,16 @@
 (ns gmrs.mills.nearest-options-test
   (:require [clojure.test :refer :all]
             [gmrs.mills.nearest-options :refer :all]
-            [gmrs.preprocess :as preprocess]
+            [gmrs.governor :as gov]
+            [gmrs.preprocess :as preproc]
             [gmrs.wrangle :as wrangle]))
 
 (defn close? [tolerance x y]
   (< (Math/abs (double (- x y))) tolerance))
+
+(def tag-processing
+  { :tags preproc/multihot-from-tags
+    :number-scale preproc/find-and-apply-z-logistic-scale })
 
 (def example-cases
   (with-meta
@@ -41,46 +46,20 @@
         :city "Kraków"}])
     {:io-settings {:option-id :venue-name
                    :case-id :name}}))
-(def volume-transf { :volume
-                    (preprocess/z-logistic-scale
-                      (concat (:volume example-cases)
-                              (:volume example-options))) })
-
-(deftest test-encoded-columns
-  (let [encoded-options
-        (encoded-columns example-options '(:genres :city) volume-transf),
-        encoded-cases
-        (encoded-columns example-cases '(:genres :city) volume-transf)]
-    (testing "encoded options"
-      (is (= [0.0 1.0]
-             (:genres-rock encoded-options))
-          "basic multi hot")
-      (is (every? #(and (pos? %) (< % 1))
-                  (:volume encoded-options))
-          "volume in expected range for scaling")
-      (is (> (first (:volume encoded-options)) (second (:volume encoded-options)))
-          "correlation preserves the correct greater-than")
-      (is (every? true? (map (fn [x y] (close? 0.001 x y))
-                             (:volume encoded-options)
-                             [0.5903728960666603, 0.11506913446634476]))
-          "options number encoding - regression"))
-    (testing "encoded cases"
-      (is (= [0.0 0.0 1.0 0.0]
-             (:genres-rap encoded-cases))
-          "basic multi hot")
-      (is (every? true? (map (fn [x y] (close? 0.001 x y))
-                             (:volume encoded-cases)
-                             [0.5943189145352167, 0.5982527878236933,
-                              0.6060822379880739, 0.613857589450869]))
-          "cases number encoding - regression"))))
 
 (deftest test-nearest-options-recommend
   (testing "one feature (genres)"
-    (let [recs
+    (let [cases-and-options
+          (gov/execute-preprocessing-instructions
+            tag-processing [{:genres [:tags :str :group-g],
+                             :name [:str]},
+                            {:genres [:tags :str :group-g],
+                             :venue-name [:str]}]
+            [example-cases example-options]),
+          recs
           (wrangle/sorted-rec-options
-            (nearest-options-recommend example-cases example-options
-                                       {:tag-fields '(:genres)
-                                        :number-fields ()}))]
+            (nearest-options-recommend (first cases-and-options)
+                                       (second cases-and-options)))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))
@@ -96,14 +75,21 @@
           "no matches and negative correlation for sara")
       (is (every? neg? (map :score (recs "alojzy/sandomierz")))
           "no matches and negative correlation for alojzy")))
-6
+
   (testing "two features (genres, city)"
-    (let [recs
+    (let [cases-and-options
+          (gov/execute-preprocessing-instructions
+            tag-processing [{:genres [:tags :str :group-g],
+                             :city [:tags :str :group-c],
+                             :name [:str]},
+                            {:genres [:tags :str :group-g],
+                             :city [:tags :str :group-c],
+                             :venue-name [:str]}]
+            [example-cases example-options]),
+          recs
           (wrangle/sorted-rec-options
-            (nearest-options-recommend example-cases example-options
-                                       {:tag-fields '(:genres :city)
-                                        :number-fields ()
-                                        :recs-amount 3}))]
+            (nearest-options-recommend (first cases-and-options)
+                                       (second cases-and-options)))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))
@@ -120,12 +106,21 @@
           "Warsaw Jazz for sara")))
 
   (testing "three features (genres, city, volume)"
-    (let [recs
+    (let [cases-and-options
+          (gov/execute-preprocessing-instructions
+            tag-processing [{:genres [:tags :str :group-g],
+                             :city [:tags :str :group-c],
+                             :volume [:int :number-scale :group-v],
+                             :name [:str]},
+                            {:genres [:tags :str :group-g],
+                             :city [:tags :str :group-c]
+                             :volume [:int :number-scale :group-v],
+                             :venue-name [:str]}]
+            [example-cases example-options]),
+          recs
           (wrangle/sorted-rec-options
-            (nearest-options-recommend example-cases example-options
-                                       {:tag-fields '(:genres :city)
-                                        :number-fields '(:volume)
-                                        :recs-amount 3}))]
+            (nearest-options-recommend (first cases-and-options)
+                                       (second cases-and-options)))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))

@@ -36,10 +36,11 @@ as it cares about the meaning of the data, it should go into preprocess."
                     (or (cols col-name) zeros)})
                  (set/union (keys cols) col-names)))))
 
-(defn cols-as-vecs
+(defn cols-as-row-vecs
   "A seq of individual rows as vectors from the cols seq."
   [cols]
- (let [col-length (cols-row-count cols)]
+  (let [cols (if (map? cols) (vals cols) cols),
+        col-length (cols-row-count cols)]
     (map (fn [idx] (map (fn [col] (nth col idx)) cols))
          (range col-length))))
 
@@ -120,6 +121,7 @@ as it cares about the meaning of the data, it should go into preprocess."
   "Given a scoring table, return a map of cases to vectors of maps { (options id)
   :score } sorted by :score descending."
   [scoring-table]
+  ;; FIXME: the empty case
   (reduce into {}
           (map (fn [case-id]
                  { case-id

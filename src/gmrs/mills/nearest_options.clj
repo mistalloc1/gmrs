@@ -1,91 +1,45 @@
 (ns gmrs.mills.nearest-options
   (:require
-    [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [gmrs.math :as math]
-    [gmrs.wrangle :as wrangle]
-    [gmrs.preprocess :as preprocess]))
+    [gmrs.wrangle :as wrangle]))
 
 
 (s/def ::no-nils (s/coll-of some?))
 
-(defn encoded-columns
-  "Encode multihot tag columns and scale number fields. number-fields-to-transfs
-  should be a hashmap of column names to transformations from z-logistic-scale.
-
-  Get the map of column names to vectors."
-  [cols tag-fields number-fields-to-transfs]
-  (apply merge (concat
-                 (map
-                   (fn [field]
-                     (preprocess/multihot-from-tags
-                       (cols field) (str (name field) "-")))
-                   tag-fields)
-                 (map
-                   (fn [field]
-                     { field
-                      (preprocess/apply-z-logistic-scale
-                        (cols field)
-                        (number-fields-to-transfs field)) })
-                   (keys number-fields-to-transfs)))))
-
 ; TODO: handle nils, no fields supplied
 (defn nearest-options-recommend
-  [cases options ; with :io-settings metadata
-   ; those we expect from the governor
-   & {:keys [tag-fields number-fields]
-      :or { tag-fields [], number-fields [] }}]
+  [cases options]
   (assert (:option-id (:io-settings (meta options))))
   (assert (:case-id (:io-settings (meta cases))))
   (let [option-id-col (:option-id (:io-settings (meta options))),
         case-id-col (:case-id (:io-settings (meta cases))),
-        number-fields-to-transfs
-        (reduce into (map (fn [field-name]
-                            { field-name
-                             (preprocess/z-logistic-scale
-                               (concat (field-name cases)
-                                       (field-name options))) })
-                          number-fields)),
-        encoded-option-cols (encoded-columns options tag-fields
-                                             number-fields-to-transfs),
-        encoded-case-cols (encoded-columns cases tag-fields
-                                           number-fields-to-transfs),
-        ; a consistent order of multihot-encoded fields
-        encoded-fields (set/union (set (keys encoded-case-cols))
-                                  (set (keys encoded-option-cols))),
-        option-cols
-        (into options
-              (wrangle/fill-missing-cols encoded-option-cols encoded-fields)),
-        case-cols
-        (into cases
-              (wrangle/fill-missing-cols encoded-case-cols encoded-fields)),
-        option-rows (wrangle/cols-as-rows option-cols)]
-    ; Validation
-    (when (not (wrangle/all-same-length? option-cols case-cols))
-      (throw (ex-info "not the same number of cases and option encoded cols"
-                      {:option-cols (keys option-cols)
-                       :case-cols (keys case-cols)})))
-    (run! (fn [row] (when (not (s/valid? ::no-nils row))
-                      (throw (ex-info "bad option row"
-                                      {:row row :options option-cols}))))
-          (wrangle/cols-as-vecs (map option-cols encoded-fields)))
+        option-row-vecs (wrangle/cols-as-row-vecs (dissoc options
+                                                          option-id-col))]
     ;; Iterate through cases and then options for computing scores
     ;; Create a scoring table with the appropriate metadata.
+    (when (nil? (case-id-col cases))
+      (throw
+        (ex-info "empty case id column" { :case-id-col case-id-col
+                                          :cases cases })))
+    (when (nil? (option-id-col options))
+      (throw
+        (ex-info "empty option id column" { :option-id-col option-id-col
+                                            :options options })))
     (with-meta
       (reduce
         into {}
         (map (fn [case-id case-vec]
                (when (not (s/valid? ::no-nils case-vec))
                  (throw (ex-info "bad case row"
-                                 {:row case-vec :cases case-cols})))
-               (map (fn [option-row]
-                       { [case-id (option-id-col option-row)]
-                         (math/pearson-correlation
-                           case-vec
-                           (map option-row encoded-fields)) })
-                     option-rows))
+                                 {:row case-vec :cases cases})))
+                 (map (fn [option-id option-vec]
+                         { [case-id option-id]
+                           (math/pearson-correlation case-vec option-vec) })
+                       (option-id-col options)
+                       option-row-vecs))
              (case-id-col cases)
-             (wrangle/cols-as-vecs (map case-cols encoded-fields))))
+             (wrangle/cols-as-row-vecs (dissoc cases case-id-col))))
       { :cases (case-id-col cases) :options (option-id-col options)
         :io-settings (:io-settings (meta cases)) })))
 
