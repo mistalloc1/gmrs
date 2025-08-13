@@ -63,7 +63,7 @@ as it cares about the meaning of the data, it should go into preprocess."
     (reduce into {} (map (fn [[col-name col]]
                            { col-name (subvec col start end) })
                          coll)),
-    :else (->> coll
+    any? (->> coll
                (drop-last (- (count coll) end))
                (drop start))))
 

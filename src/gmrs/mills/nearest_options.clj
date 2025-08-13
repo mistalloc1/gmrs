@@ -29,12 +29,7 @@
                         (number-fields-to-transfs field)) })
                    (keys number-fields-to-transfs)))))
 
-; TODO: allow for excluding some fields from tag multihot chopping
 ; TODO: handle nils, no fields supplied
-; TODO: allow for numeric columns where zero is meaningful (and shouldn't
-; disappear in scaling)
-; TODO: binning
-; TODO: optionally reconstruct some case representation from interactions
 (defn nearest-options-recommend
   [cases options ; with :io-settings metadata
    ; those we expect from the governor

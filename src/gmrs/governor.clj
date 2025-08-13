@@ -69,9 +69,38 @@
           :inter-columns (diagnose-columns-from-source
                            old-govern io-settings inter-gives)}))
 
+(defn get-col-groups
+  "A helper function for execute-preprocessing-instructions.
+
+  Group columns from multiple column sets if they have the same :group-... tag,
+  otherwise put a column under its own :ungroup-... key."
+  [accum-groups-map set-taggings set-n]
+  (if (empty? set-taggings)
+    accum-groups-map
+    (recur (reduce-kv
+             (fn [groups-map col-name tags]
+               (if-let [group-key (some
+                                    (fn [tag]
+                                      (when (starts-with? (name tag) "group")
+                                        tag))
+                                    tags)]
+                 (update-in groups-map [group-key]
+                            conj { :col-name col-name
+                                   :set-n set-n })
+                 (update-in groups-map
+                            [(keyword
+                               (str "ungroup:" set-n col-name))]
+                            conj { :col-name col-name
+                                   :set-n set-n })))
+             accum-groups-map
+             (first set-taggings))
+           (rest set-taggings) (inc set-n)))))
+
 (defn execute-preprocessing-instructions
   "Apply all functions from tags-table to the columns in col-sets, that are
-  indicated by tags in the cols-tables which map column names to data type tags.
+  indicated by tags in the set-taggings which map column names to data type tags.
+
+  Columns with no tags will be skipped in the output.
 
   Special tags in the form of :group-XYZ guarantee that all cols tagged this
   way will be seamlessly preprocessed together - for example for encoding tags
@@ -82,27 +111,8 @@
   will then all be renamed to :col-name-X in the final col-sets.
 
   The metadata of original col-sets will be preserved."
-  [tags-table cols-tables col-sets]
-  (letfn [(get-col-groups [accum-groups-map cols-tables set-n]
-            (if (empty? cols-tables)
-              accum-groups-map
-              (recur (reduce
-                       into {}
-                       (map (fn [[col-name tags]]
-                              (if-let [group-key
-                                       (some (fn [tag] (starts-with? (name tag)
-                                                                     "group"))
-                                             tags)]
-                                (update-in accum-groups-map [group-key]
-                                           conj { :col-name col-name
-                                                  :set set-n })
-                                (update-in accum-groups-map
-                                           [(key (str "ungroup" set-n col-name))]
-                                           conj { :col-name col-name
-                                                  :set set-n })))
-                            (first cols-tables)))
-                     (rest cols-tables) (inc set-n)))),
-          (unroll-col-group [result-col-sets group-entries]
+  [tags-table set-taggings col-sets]
+  (letfn [(unroll-col-group [result-col-sets group-entries]
             (reduce
               (fn [group-col-sets {:keys [col-name set-n done]}]
                 (if (map? done)
@@ -127,10 +137,10 @@
       (map
         (fn [group]
           (let [all-cols (map (fn [{:keys [col-name set-n]}]
-                                (get (nth cols-tables set-n)
+                                (get (nth col-sets set-n)
                                      col-name))
                               group),
-                starts-in-lump (reductions + 0 (map count group))
+                starts-in-lump (reductions + 0 (map count all-cols))
                 set-indices-in-lump (map vector
                                          (butlast starts-in-lump)
                                          (rest starts-in-lump)),
@@ -140,7 +150,7 @@
                                             coll))
                             cols-lumped
                             ;; NOTE: tags must be the same for every column!
-                            (get (nth cols-tables (-> group first :set-n))
+                            (get (nth set-taggings (-> group first :set-n))
                                  (-> group first :col-name)))]
             (map-indexed (fn [i entry]
                            (assoc entry :done
@@ -148,7 +158,7 @@
                                          (into [processed]
                                                (nth set-indices-in-lump i)))))
                          group)))
-        (vals (get-col-groups {} col-sets 0))))))
+        (vals (get-col-groups {} set-taggings 0))))))
 
 (defn choose-and-prepare-mill
   [old-govern]

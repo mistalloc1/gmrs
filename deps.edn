@@ -23,4 +23,4 @@
                    {:git/tag "v0.10.9" :git/sha "e405aac"}}
             :ns-default build}
            }
- }        
+ }

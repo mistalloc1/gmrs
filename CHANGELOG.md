@@ -11,6 +11,7 @@ the new features.
 ### Added
 - Data diagnostics recognize numbers and some datetime formats
 - A separate mill function for recommending options similar to the known interactions
+- Centralized preprocessing for columns, controlled by the governor
 
 ### Changed
 - Moved the math to a separate namespace so Neanderthal can be swapped for

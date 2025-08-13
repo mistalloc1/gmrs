@@ -146,6 +146,5 @@
           "Warsaw Jazz for alojzy")
       (is (neg? (:score (second (recs "alojzy/sandomierz"))))
           "Kraków Rock for alojzy"))))
-(run-test test-nearest-options-recommend)
 
 ; (run-tests 'gmrs.mills.nearest-options-test)

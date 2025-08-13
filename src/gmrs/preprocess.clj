@@ -25,6 +25,9 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
 ;;; Column preprocessing functions.
 ;;;
 
+; TODO: allow for numeric columns where zero is meaningful (and shouldn't
+; disappear in scaling)
+; TODO: binning
 (defn find-and-apply-z-logistic-scale
   [coll]
   (apply-z-logistic-scale coll (z-logistic-scale coll)))
