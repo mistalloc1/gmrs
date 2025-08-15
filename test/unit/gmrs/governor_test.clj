@@ -8,7 +8,10 @@
 (def hotel-governor
   { :recs-amount 2
     :score-weakness-tolerance 0.02
-    :pull-strategy :target-top-heavy })
+    :pull-strategy :target-top-heavy,
+    :tags-preprocessing
+      { :tags preproc/multihot-from-tags
+        :number-scale preproc/find-and-apply-z-logistic-scale }})
 
 (deftest test-target-top-heavy-pull-strategy
   (is (true?
@@ -136,7 +139,7 @@
 (deftest test-execute-preprocessing-instructions
   (let [preprocessed
         (execute-preprocessing-instructions
-          cmd/*EnabledTagPreprocessing*
+          (:tags-preprocessing hotel-governor)
           [{ :country #{:tags :str :group-123},
              :avg-price #{:int :number-scale} }
            { :country #{:tags :str :group-123},

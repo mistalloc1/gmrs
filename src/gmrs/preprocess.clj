@@ -21,17 +21,6 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   (assert (:sd transf))
   (math/z-logistic-scale coll (:mean transf) (:sd transf)))
 
-;;;
-;;; Column preprocessing functions.
-;;;
-
-; TODO: allow for numeric columns where zero is meaningful (and shouldn't
-; disappear in scaling)
-; TODO: binning
-(defn find-and-apply-z-logistic-scale
-  [coll]
-  (apply-z-logistic-scale coll (z-logistic-scale coll)))
-
 ; TODO: profile against a cleaner impl (this is the oldest code in the project)
 (defn multihot-from-tags
   "Given a column of tags separated by pipes, return a mapping of columns to
@@ -53,3 +42,19 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
               tags-column))
      @tag->cols)))
 
+;;;
+;;; Column preprocessing structures.
+;;;
+
+;; Prepare function generates any transf object that should be passed as the
+;; second arg to the execute function.
+(defrecord PreprocessingTransform [prepare execute])
+
+; TODO: allow for numeric columns where zero is meaningful (and shouldn't
+; disappear in scaling)
+; TODO: binning
+(def ZLogisticScale
+  (->PreprocessingTransform z-logistic-scale apply-z-logistic-scale))
+
+(def MultihotFromTags
+  (->PreprocessingTransform (fn [_] "proc-") multihot-from-tags))

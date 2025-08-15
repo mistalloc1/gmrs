@@ -2,7 +2,8 @@
   (:require [gmrs.wrangle :as wrangle]))
 
 (defn get-governor [io-settings io-setup govern-name]
-  (some (map (fn [give-fun] (give-fun io-settings govern-name))
+  (some any?
+        (map (fn [give-fun] (give-fun io-settings govern-name))
              (:govern-gives io-setup))))
 
 (defn pages
@@ -29,3 +30,8 @@
   "Lazy sequence of case pages (combining a page from each give)."
   [io-settings io-setup]
   (getter io-settings (:case-gives io-setup)))
+
+(defn get-inters
+  "Lazy sequence of interaction pages (combining a page from each give)."
+  [io-settings io-setup]
+  (getter io-settings (:inter-gives io-setup)))

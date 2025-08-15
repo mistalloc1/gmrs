@@ -4,16 +4,10 @@
             [gmrs.governor :as gv]
             [gmrs.wrangle :as wrangle]
             [gmrs.io.baseless :as bs]
-            [gmrs.preprocess :as preproc]
             [gmrs.io.getters :as get]
             [gmrs.mills.informed-popularity
              :refer [informed-popularity-recommend]]
-            [gmrs.mills.nearest-options :refer [nearest-options-recommend]]
-            ;[tech.v3.dataset :as ds]
-        ;    [zero-one.geni.core :as g]
-            )
-  ;(:import [org.apache.spark.sql SparkSession Dataset Row]
-  ;         [org.apache.spark.ml.evaluation RegressionEvaluator])
+            [gmrs.mills.nearest-options :refer [nearest-options-recommend]])
   (:gen-class))
 
 (def ^:dynamic *GlobalIOSettings* (bs/toy-temp-baseless-io-settings))
@@ -25,10 +19,6 @@
 
 (def ^:dynamic *EnabledPullStrategies*
   { :target-top-heavy gv/target-top-heavy-pull-strategy })
-
-(def ^:dynamic *EnabledTagPreprocessing*
-  { :tags preproc/multihot-from-tags
-    :number-scale preproc/find-and-apply-z-logistic-scale })
 
 (defn new-governor! [govern-name]
   (run! (fn [send-fun]
@@ -88,15 +78,20 @@
   ; NOTE: this is intended so you could send in new cases without saving them
   ; to the storage
   ([govern-name cases-filter options-filter case-cols]
-   ; TODO: actually apply cases-filter and options-filter, some filters and
-   ; guidance should come from the guvna/mill
-   (let [gov (get/get-governor  *GlobalIOSettings*
-                                    *GlobalIOSetup*
-                                    govern-name)
+   ; TODO: actually apply cases-filter and options-filter, some filters
+   ; guidance should come from the guvna/mil
+   (let [gov (get/get-governor *GlobalIOSettings*
+                               *GlobalIOSetup*
+                               govern-name)
          mill ((gov :mill) *EnabledMills*),
          pull-strat ((gov :pull-strategy) *EnabledPullStrategies*),
          options-getter (get/get-options *GlobalIOSettings*
-                                         *GlobalIOSetup*)]
+                                         *GlobalIOSetup*)
+         inters-getter (get/get-inters *GlobalIOSettings*
+                                       *GlobalIOSetup*)]
+     ;; FIXME: wrap getters in preprocessing
+     ;; TODO: start by getting some from getters and running common preproc;
+     ;; save col groups along with transform functions and preparation objs
      (loop [sample-number 1,
             new-recs (mill case-cols (first options-getter) gov),
             accum-recs [],

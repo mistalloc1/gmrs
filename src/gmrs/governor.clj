@@ -1,25 +1,26 @@
 (ns gmrs.governor
-  (:require
-    [clojure.set :as set]
-    [clojure.string :refer [starts-with?]]
-    [gmrs.io.getters :refer [getter]]
-    [gmrs.data-diag :refer [diag-all-values]]
-    [gmrs.wrangle :as wrangle]))
+  (:require [clojure.set :as set]
+            [clojure.string :refer [starts-with?]]
+            [gmrs.io.getters :refer [getter]]
+            [gmrs.data-diag :refer [diag-all-values]]
+            [gmrs.preprocess :as preproc]
+            [gmrs.wrangle :as wrangle]))
 
 (defn sum-scores-with-decreasing-weight
-  "Sum recommendation scores at indices from idx to final-idx. The recommendations
-  should be as a standard map of case -> [option maps with :score]"
-  [running-sum recommendations idx final-idx]
+  "Sum recommendation scores at each index from idx, stopping at final-idx. Each
+  subsequent score has a weight of 1/index. The recommendations should be in the
+  sorted form, map of case -> [option maps with :score]"
+  [running-sum recommendations idx final-idx recs-length]
   (if (= idx (inc final-idx))
     running-sum
     (recur (+ running-sum
-              (if (>= (inc idx) scored-opts-count)
+              (if (>= (inc idx) recs-length)
                 0.0
                 (/
                  (reduce + (map #(:score (nth % idx))
                                 (vals recommendations)))
                  (inc idx))))
-           recommendations (inc idx) final-idx)))
+           recommendations (inc idx) final-idx recs-length)))
 
 (defn target-top-heavy-pull-strategy
   "Pages pull strategy based on linearly increasing the tolerance on distance
@@ -35,7 +36,7 @@
                                           (zero? scored-opts-count))
                                     0.0
                                     (/ (sum-scores-with-decreasing-weight
-                                         0.0 current-recs 0 3)
+                                         0.0 current-recs 0 3 scored-opts-count)
                                        scored-opts-count))),
         cost-of-next-pull (* (:score-weakness-tolerance gov) step-number)]
     (> cost-of-recommendation cost-of-next-pull)))
@@ -43,8 +44,11 @@
 (defn new-governor
   "Create a bare empty governor."
   []
-  { :recs-amount 5
-    :score-weakness-tolerance 0.02 :pull-strategy :target-top-heavy })
+  { :recs-amount 5,
+    :score-weakness-tolerance 0.02, :pull-strategy :target-top-heavy,
+    :tags-preprocessing
+    { :tags preproc/multihot-from-tags
+      :number-scale preproc/find-and-apply-z-logistic-scale }})
 
 (defn diagnose-columns-from-source
   "Get diagnostics for columns that are supplied from a give functions.

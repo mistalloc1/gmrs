@@ -3,6 +3,7 @@
 ; NOTE: option-id cannot be :score
 (defn toy-temp-baseless-io-settings []
   { :option-id :iid, :case-id :uid, :govern-id :gid,
+    :inter-id :intid,
     :dec-option :optid, :dec-case :caseid, :dec-agree :agree,
     :inter-option :optid, :inter-case :caseid
     :page-size 32 })
@@ -37,11 +38,17 @@
                             (map (fn [item]
                                    [((settings :case-id) item) item])
                                  new-cases)))]
-      ; FIXME: decs, inters storage model
+      :inter-gives [(fn [settings & ignored-args]
+                      (cycle
+                        (partition-all (settings :page-size)
+                                       (vals @inter-store))))]
+      :inter-sends [(fn [settings new-inters] (swap! case-store into
+                            (map (fn [item]
+                                   [((settings :inter-id) item) item])
+                                 new-inters)))]
+      ; FIXME: decs, inters storage model - but probs giving them IDs inevitable
       :dec-gives [(fn [settings & ignored-args] (vals @dec-store))]
       :dec-sends [(fn [settings new-decs] (swap! dec-store into new-decs))]
-      :inter-gives [(fn [settings & ignored-args] (vals @inter-store))]
-      :inter-sends [(fn [settings new-inters] (swap! inter-store into new-inters))]
       :govern-gives [(fn [settings govern-name] (@govern-store govern-name))]
       :govern-sends [(fn [settings govern-name new-govern]
                        (swap! govern-store assoc govern-name new-govern))] }))
