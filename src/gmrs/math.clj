@@ -19,6 +19,7 @@
 (defn desc-stats
   "Descriptive statistics map for x (collection)."
   [coll]
+  (when (empty? coll) (throw (Exception. "trying to get stats from empty coll")))
   (let [x (dv coll),
         n (nd/dim x),
         mu (/ (nd/sum x) n),

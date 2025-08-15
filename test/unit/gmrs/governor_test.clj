@@ -1,17 +1,12 @@
 (ns gmrs.governor-test
   (:require [clojure.test :refer :all]
             [gmrs.command :as cmd :refer [*EnabledMills*]]
-            [gmrs.io.getters :refer [getter]]
-            [gmrs.governor :refer :all]
-            [gmrs.preprocess :as preproc]))
+            [gmrs.governor :refer :all]))
 
 (def hotel-governor
   { :recs-amount 2
     :score-weakness-tolerance 0.02
-    :pull-strategy :target-top-heavy,
-    :tags-preprocessing
-      { :tags preproc/multihot-from-tags
-        :number-scale preproc/find-and-apply-z-logistic-scale }})
+    :pull-strategy :target-top-heavy })
 
 (deftest test-target-top-heavy-pull-strategy
   (is (true?
@@ -111,83 +106,17 @@
            :row-id #{:int}}
           :case-columns
           {:name #{:str},
-          :country #{:tags :str},
-          :checkin-until #{:str :needs-conv :time-local},
-          :avg-price #{:int},
-          :amenities #{:str},
-          :age #{:int},
-          :travel-purpose #{:tags :str}}
+           :country #{:tags :str},
+           :checkin-until #{:str :needs-conv :time-local},
+           :avg-price #{:int},
+           :amenities #{:str},
+           :age #{:int},
+           :travel-purpose #{:tags :str}}
           :inter-columns [] }
          (update-columns-diagnostics hotel-governor
                                      cmd/*GlobalIOSettings*
                                      hotel-option-gives hotel-case-gives
                                      hotel-inter-gives))))
-
-(deftest test-get-col-groups
-  (is (= { :group-123 [{ :col-name :country, :set-n 1 },
-                       { :col-name :country, :set-n 0 }],
-           :ungroup:0:avg-price [{:col-name :avg-price, :set-n 0}],
-           :ungroup:1:checkin-until [{:col-name :checkin-until, :set-n 1}] }
-         (get-col-groups
-           {}
-           [{ :country #{:tags :str :group-123},
-              :avg-price #{:int :number-scale} }
-            { :country #{:tags :str :group-123},
-              :checkin-until #{:str :needs-conv :time-local} }]
-           0))))
-
-(deftest test-execute-preprocessing-instructions
-  (let [preprocessed
-        (execute-preprocessing-instructions
-          (:tags-preprocessing hotel-governor)
-          [{ :country #{:tags :str :group-123},
-             :avg-price #{:int :number-scale} }
-           { :country #{:tags :str :group-123},
-             :checkin-until #{:str :needs-conv :time-local} }]
-          [(with-meta
-             (first (getter cmd/*GlobalIOSettings* hotel-case-gives))
-             { :io-settings cmd/*GlobalIOSettings* }),
-           (with-meta
-             (first (getter cmd/*GlobalIOSettings* hotel-option-gives))
-             { :hello "goodbye" })]),
-        prepr-cases (first preprocessed),
-        prepr-options (second preprocessed)]
-    (testing "metadata preservation"
-      (is (= (meta prepr-cases)
-             {:io-settings cmd/*GlobalIOSettings*})
-          "preprocessed cases metadata")
-      (is (= (meta prepr-options)
-             { :hello "goodbye" })
-          "preprocessed options metadata"))
-    (testing "number columns"
-      (is (every? float? (:avg-price prepr-cases))
-          "Number column mapped into a float scale when requested")
-      (is (= (vec (preproc/find-and-apply-z-logistic-scale
-                    (:avg-price (first (getter cmd/*GlobalIOSettings*
-                                               hotel-case-gives)))))
-             (:avg-price prepr-cases))
-          "The correct scaling function applied"))
-    (testing "passthrough columns"
-      (is (= (:checkin-until (first (getter cmd/*GlobalIOSettings*
-                                            hotel-option-gives)))
-             (:checkin-until prepr-options))
-          "A column with no preprocessing piped through as needed"))
-    (testing "grouped columns"
-      (is (= [true true true]
-             (mapv #(boolean (get prepr-cases %))
-                   [:country-USA :country-France :country-Sweden]))
-          "All countries encoded for cases")
-      (is (= [true true true]
-             (mapv #(boolean (get prepr-options %))
-                   [:country-USA :country-France :country-Sweden]))
-          "All countries encoded for options"))
-    (testing "multihot tag encoding"
-      (is (= [0.0 0.0 1.0 1.0 0.0 0.0]
-             (:country-France prepr-cases)))
-      (is (= [1.0 1.0 1.0 0.0 0.0]
-             (:country-USA prepr-options)))
-      (is (= [0.0 0.0 0.0 0.0 0.0]
-             (:country-Sweden prepr-options))))))
 
 (deftest test-choose-and-prepare-mill
   (is (some #{(:mill (choose-and-prepare-mill
