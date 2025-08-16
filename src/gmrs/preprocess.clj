@@ -68,6 +68,9 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
 ;;; Applying transforms to column sets (i.e. maps).
 ;;;
 
+;; FIXME: currently there is no notion of the correct order of applying
+;; transforms, but it'll probably exist in reality
+
 (defn func? [x] (instance? clojure.lang.IFn x))
 
 (defn get-col-groups
@@ -96,6 +99,43 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
              (first set-taggings))
            (rest set-taggings) (inc set-n))))
 
+(defn prepared-transf-for-tag
+  "Prepare transform if a record and create the function, otherwise leave as is."
+  ;;  TODO: maybe it should always have to be a record instance?
+  [tags-table coll tag]
+  (let [transf (get tags-table tag)]
+    ;; NOTE: Interestingly, instance? with PreprocessingTransform doesn't seem
+    ;; reliable here...
+    (if (record? transf)
+      (let [prep ((.prepare transf) coll)]
+        (fn [coll] ((.execute transf) coll prep)))
+      transf)))
+
+(defn get-groups-to-ready-transfs
+  "Get a mapping of groups to functions combining all necessary preprocessing,
+  already fitted to the data supplied in the col-sets. Args are similar to
+  retag-with-preproc-transforms and execute-preprocessing-instructions."
+  [tags-table set-taggings col-sets]
+  (let [col-groups (get-col-groups {} set-taggings 0)]
+    (reduce
+      into {}
+      (map
+        (fn [[group-name group]]
+          (let [all-cols (map (fn [{:keys [col-name set-n]}]
+                                (get (nth col-sets set-n)
+                                     col-name))
+                              group),
+                cols-lumped (apply concat all-cols),
+                transforms
+                (map
+                  (partial prepared-transf-for-tag tags-table)
+                  (repeat cols-lumped)
+                  ;; NOTE: tags must be the same for every column!
+                  (get (nth set-taggings (-> group first :set-n))
+                       (-> group first :col-name)))]
+            { group-name (apply comp (filter func? transforms)) }))
+        col-groups))))
+
 (defn retag-with-preproc-transforms
   "Get tags-table and new set-taggings. It will add group tags for the columns
   from col-sets in set-taggings. The group tags will be mapped in tags-table
@@ -103,32 +143,9 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   fields of PreprocessingTransform records and results from their .prepare
   fields."
   [tags-table set-taggings col-sets]
-  (let [col-groups (get-col-groups {} set-taggings 0),
-        groups-to-ready-transfs
-        (reduce
-          into {}
-          (map
-            (fn [[group-name group]]
-              (let [all-cols (map (fn [{:keys [col-name set-n]}]
-                                    (get (nth col-sets set-n)
-                                         col-name))
-                                  group),
-                    cols-lumped (apply concat all-cols),
-                    transforms (map
-                                 (fn [coll tag]
-                                   (let [transf (get tags-table tag identity)]
-                                     (if (instance?
-                                           PreprocessingTransform
-                                           transf)
-                                       (let [prep ((.prepare transf) coll)]
-                                         (fn [coll] (.execute transf coll prep)))
-                                       transf)))
-                                 (repeat cols-lumped)
-                                 ;; NOTE: tags must be the same for every column!
-                                 (get (nth set-taggings (-> group first :set-n))
-                                      (-> group first :col-name)))]
-                { group-name (apply (filter func? transforms) comp) }))
-            col-groups)),
+  (let [groups-to-transfs (get-groups-to-ready-transfs tags-table
+                                                       set-taggings
+                                                       col-sets),
         new-col-taggings
         (fn [group-name col-entries]
           (map (fn [entry] { [(:set-n entry) (:col-name entry)] [group-name] })
@@ -141,7 +158,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                                              new-tags))
                                          accum-separate-taggings
                                          new-taggings))]
-    { :tags-table groups-to-ready-transfs
+    { :tags-table groups-to-transfs
       :set-taggings (unroll-new-taggings (vec (repeat (count set-taggings) {}))
                                          new-col-taggings) }))
 

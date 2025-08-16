@@ -1,8 +1,9 @@
 (ns gmrs.preprocess-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [gmrs.preprocess :refer :all]
-            [gmrs.io.getters :refer [getter]]
-            [gmrs.wrangle :as wrangle]))
+            [gmrs.wrangle :as wrangle])
+  (:import [gmrs.preprocess PreprocessingTransform]))
 
 (defn close? [tolerance x y]
   (< (Math/abs (double (- x y))) tolerance))
@@ -21,7 +22,7 @@
                                                  {:mean 30.15 :sd 49.27})
                          [0.56483486, 0.37318641, 0.26544431, 0.78170398]))
       "basic case")
-  (is (every? true? (map = (double-array (repeat 4.0 0))
+  (is (every? true? (map = (double-array (repeat 4 0))
                          (apply-z-logistic-scale [43 4.6 -20 93]
                                                  {:mean 30.15 :sd 0.0})))
       "0 standard dev case"))
@@ -98,6 +99,19 @@
       :avg-price 140 :amenities "breakfast|pool|wifi|babysitting"
       :age 38 :travel-purpose "leisure"}]))
 
+;; Test PreprocessingTransforms.
+(defn append-init-count-prepare [coll]
+  { :init-count (count coll) })
+(defn append-init-count-execute [coll transf]
+  (map (fn [elem] (str (:init-count transf) elem))
+       coll))
+(def AppendInitialCount (->PreprocessingTransform append-init-count-prepare
+                                                  append-init-count-execute))
+
+(defn to-upper-prepare [coll] "Upper preparation")
+(defn to-upper-execute [coll transf] (map str/upper-case coll))
+(def ToUpper (->PreprocessingTransform to-upper-prepare to-upper-execute))
+
 (deftest test-get-col-groups
   (is (= { :group-123 [{ :col-name :country, :set-n 1 },
                        { :col-name :country, :set-n 0 }],
@@ -110,6 +124,41 @@
             { :country #{:tags :str :group-123},
               :checkin-until #{:str :needs-conv :time-local} }]
            0))))
+
+(deftest test-prepared-transf-for-tag
+  (let [tags-table { :upper ToUpper :append-count AppendInitialCount
+                    :tags MultihotFromTags :number-scale ZLogisticScale }]
+    (is (= ["3a" "3b" "3c"]
+           ((prepared-transf-for-tag tags-table ["a" "b" "c"] :append-count)
+            ["a" "b" "c"])))))
+
+(deftest test-get-groups-to-ready-transfs
+  (let [groups-to-transfs
+        (get-groups-to-ready-transfs
+          { :upper ToUpper :append-count AppendInitialCount
+            :tags MultihotFromTags :number-scale ZLogisticScale }
+          [{ :country [:str :append-count :group-1]
+             :name [:upper] }
+           { :country [:str :append-count :group-1]
+             :avg-price [:number-scale :int] }]
+          [hotel-cases hotel-options])]
+    (is (= 3 (count groups-to-transfs))
+        "correct number of groups")
+    (is (= ["JOHN SMITH" "SARAH JOHNSON" "PIERRE DUBOIS"
+            "MARIE LEROY" "ERIK ANDERSSON" "ANNA LINDQVIST"]
+           ((:ungroup:0:name groups-to-transfs)
+            (:name hotel-cases)))
+        "simple uppercase transform applied")
+    (is (map (partial close? 0.001)
+             (vec ((.execute ZLogisticScale)
+                   (:avg-price hotel-options)
+                   ((.prepare ZLogisticScale) (:avg-price hotel-options))))
+             ((:ungroup:1:avg-price groups-to-transfs)
+              (:avg-price hotel-options)))
+        "the same scaling as expected is applied for :avg-price")
+    (is (= ["11USA" "11USA" "11France" "11France" "11Sweden" "11Sweden"]
+           ((:group-1 groups-to-transfs) (:country hotel-cases)))
+        "transform for :group-1 was prepared for the lumped column")))
 
 (deftest test-execute-preprocessing-instructions
   (let [preprocessed
