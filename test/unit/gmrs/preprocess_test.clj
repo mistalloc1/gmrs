@@ -135,6 +135,11 @@
 (deftest test-get-groups-to-ready-transfs
   (let [groups-to-transfs
         (get-groups-to-ready-transfs
+          (get-col-groups {} [{ :country [:str :append-count :group-1]
+                                :name [:upper] }
+                              { :country [:str :append-count :group-1]
+                                :avg-price [:number-scale :int] }]
+                          0)
           { :upper ToUpper :append-count AppendInitialCount
             :tags MultihotFromTags :number-scale ZLogisticScale }
           [{ :country [:str :append-count :group-1]
@@ -159,6 +164,41 @@
     (is (= ["11USA" "11USA" "11France" "11France" "11Sweden" "11Sweden"]
            ((:group-1 groups-to-transfs) (:country hotel-cases)))
         "transform for :group-1 was prepared for the lumped column")))
+
+(deftest test-retag-with-preproc-transforms
+  (let [tags-and-transfs
+        (retag-with-preproc-transforms
+            (:tags-preprocessing hotel-governor)
+            [{ :country #{:tags :str :group-123},
+               :avg-price #{:int :number-scale} }
+             { :country #{:tags :str :group-123},
+               :checkin-until #{:str :needs-conv :time-local} }]
+            [hotel-cases hotel-options])
+        grouped-taggings (:set-taggings tags-and-transfs),
+        tags-table (:tags-table tags-and-transfs)]
+    (is (= #{:tags :str :group-123}
+           (:country (nth grouped-taggings 0)))
+        "should be left the same 1")
+    (is (= #{:tags :str :group-123}
+           (:country (nth grouped-taggings 1)))
+        "should be left the same 2")
+    (is (= #{:ungroup:0:avg-price :int :number-scale}
+           (:avg-price (nth grouped-taggings 0)))
+        "add the ungroup tag")
+    (is (= #{:group-123 :ungroup:0:avg-price :ungroup:1:checkin-until}
+           (set (keys tags-table)))
+        "only leave group entries in preprocessing table")
+    (is (= [0.0 0.0 1.0 1.0 0.0 0.0]
+           (:proc-France ((:group-123 tags-table)
+                          (:country hotel-cases))))
+        "a grouped transform performs correctly")
+    (is  (map (partial close? 0.001)
+             (vec ((.execute ZLogisticScale)
+                   (:avg-price hotel-cases)
+                   ((.prepare ZLogisticScale) (:avg-price hotel-cases))))
+             ((:ungroup:0:avg-price tags-table)
+              (:avg-price hotel-cases)))
+        "an ugrouped transform performs correctly")))
 
 (deftest test-execute-preprocessing-instructions
   (let [preprocessed
@@ -210,6 +250,20 @@
       (is (= [1.0 1.0 1.0 0.0 0.0]
              (:country-USA prepr-options)))
       (is (= [0.0 0.0 0.0 0.0 0.0]
-             (:country-Sweden prepr-options))))))
+             (:country-Sweden prepr-options)))))
+  (testing "preprocessing transforms for groups"
+    (let [groups-and-transfs
+          (retag-with-preproc-transforms
+            (:tags-preprocessing hotel-governor)
+            [{ :country #{:tags :str :group-123},
+               :avg-price #{:int :number-scale} }
+             { :country #{:tags :str :group-123},
+               :checkin-until #{:str :needs-conv :time-local} }]
+            [(with-meta
+               hotel-cases
+               { :io-settings { :iid "item id" :uid "user id"} }),
+             (with-meta
+               hotel-options
+               { :hello "goodbye" })])])))
 
 ; (run-tests 'gmrs.preprocess-test)
