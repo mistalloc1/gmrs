@@ -77,27 +77,28 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   "Group columns from multiple column sets if they have the same :group-... tag,
   otherwise put a column under its own :ungroup-... key. Return a map of group
   keys to group entries (which are maps of :col-name and :set-n)."
-  [accum-groups-map set-taggings set-n]
-  (if (empty? set-taggings)
-    accum-groups-map
-    (recur (reduce-kv
-             (fn [groups-map col-name tags]
-               (if-let [group-key (some
-                                    (fn [tag]
-                                      (when (starts-with? (name tag) "group")
-                                        tag))
-                                    tags)]
-                 (update-in groups-map [group-key]
-                            conj { :col-name col-name
+  ([set-taggings] (get-col-groups {} set-taggings 0))
+  ([accum-groups-map set-taggings set-n]
+   (if (empty? set-taggings)
+     accum-groups-map
+     (recur (reduce-kv
+              (fn [groups-map col-name tags]
+                (if-let [group-key (some
+                                     (fn [tag]
+                                       (when (starts-with? (name tag) "group")
+                                         tag))
+                                     tags)]
+                  (update-in groups-map [group-key]
+                             conj { :col-name col-name
                                    :set-n set-n })
-                 (update-in groups-map
-                            [(keyword
-                               (str "ungroup:" set-n col-name))]
-                            conj { :col-name col-name
-                                   :set-n set-n })))
-             accum-groups-map
-             (first set-taggings))
-           (rest set-taggings) (inc set-n))))
+                  (update-in groups-map
+                             [(keyword
+                                (str "ungroup:" set-n col-name))]
+                             conj { :col-name col-name
+                                    :set-n set-n })))
+              accum-groups-map
+              (first set-taggings))
+            (rest set-taggings) (inc set-n)))))
 
 (defn prepared-transf-for-tag
   "Prepare transform if a record and create the function, otherwise leave as is."
@@ -143,7 +144,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   fields of PreprocessingTransform records and results from their .prepare
   fields."
   [tags-table set-taggings col-sets]
-  (let [col-groups (get-col-groups {} set-taggings 0),
+  (let [col-groups (get-col-groups set-taggings),
         groups-to-transfs (get-groups-to-ready-transfs tags-table
                                                        set-taggings
                                                        col-sets
@@ -240,4 +241,4 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                                          (into [processed]
                                                (nth set-indices-in-lump i)))))
                          group)))
-       (vals (get-col-groups {} set-taggings 0))))))
+       (vals (get-col-groups set-taggings))))))

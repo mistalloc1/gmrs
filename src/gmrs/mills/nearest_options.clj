@@ -59,9 +59,9 @@
   ; TODO:consider the scenario of getting the same loose-options multiple times
   ; TODO:when do we want to retake more interactions?
   ; TODO:inspection or logging
-  ([cases inters gettable-inters gettable-options pull-strategy]
+  ([cases inters options gettable-inters gettable-options pull-strategy]
    (nearest-options-from-interactions-mill
-     cases inters []
+     cases inters options
      gettable-inters gettable-options
      {} [] []
      pull-strategy 1 nil
@@ -153,3 +153,30 @@
 
       ;; Recommendations OK or a repeated step
       :else recommendations))))
+
+(defn nearest-options-from-cases-mill
+  ([cases inters options gettable-inters gettable-options pull-strategy]
+   (let [case-id-col (:case-id (:io-settings (meta cases)))]
+     ;; TODO: for now only mock some return values
+     (map (fn [case-id] { [case-id :case-near-opt-marker] 1.0 })
+        (case-id-col cases)))))
+
+(defn nearest-options-type-mill
+  "Look at the cases and determine which ones can get recommendations from
+  similar options to their interactions, and which (with little interactions)
+  have to get recommended options from hopefully similar cases."
+  [cases inters options gettable-inters gettable-options pull-strategy]
+  ;; TODO: heuristic of getting two pages of inters, kinda weak
+  (let [more-inters (wrangle/stack inters (first gettable-inters)),
+        io-settings (:io-settings (meta cases)),
+        case-ids-with-inters (map (set (:inter-case io-settings))
+                                  ((:case-id io-settings) cases))]
+    (merge
+      (nearest-options-from-cases-mill
+        (wrangle/cols-from-row-mask cases (map not case-ids-with-inters))
+        options more-inters gettable-inters gettable-options
+        pull-strategy)
+      (nearest-options-from-interactions-mill
+        (wrangle/cols-from-row-mask cases case-ids-with-inters)
+        options more-inters gettable-inters gettable-options
+        pull-strategy))))

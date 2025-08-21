@@ -1,7 +1,6 @@
 (ns gmrs.mills.nearest-options-test
   (:require [clojure.test :refer :all]
             [gmrs.mills.nearest-options :refer :all]
-            [gmrs.governor :as gov]
             [gmrs.preprocess :as preproc]
             [gmrs.wrangle :as wrangle]))
 
@@ -10,7 +9,10 @@
 
 (def tag-processing
   { :tags preproc/multihot-from-tags
-    :number-scale preproc/find-and-apply-z-logistic-scale })
+    :number-scale (fn [coll]
+                    (preproc/apply-z-logistic-scale
+                      coll
+                      (preproc/z-logistic-scale coll))) })
 
 (def example-cases
   (with-meta
@@ -50,7 +52,7 @@
 (deftest test-nearest-options-recommend
   (testing "one feature (genres)"
     (let [cases-and-options
-          (gov/execute-preprocessing-instructions
+          (preproc/execute-preprocessing-instructions
             tag-processing [{:genres [:tags :str :group-g],
                              :name [:str]},
                             {:genres [:tags :str :group-g],
@@ -78,7 +80,7 @@
 
   (testing "two features (genres, city)"
     (let [cases-and-options
-          (gov/execute-preprocessing-instructions
+          (preproc/execute-preprocessing-instructions
             tag-processing [{:genres [:tags :str :group-g],
                              :city [:tags :str :group-c],
                              :name [:str]},
@@ -107,7 +109,7 @@
 
   (testing "three features (genres, city, volume)"
     (let [cases-and-options
-          (gov/execute-preprocessing-instructions
+          (preproc/execute-preprocessing-instructions
             tag-processing [{:genres [:tags :str :group-g],
                              :city [:tags :str :group-c],
                              :volume [:int :number-scale :group-v],

@@ -40,6 +40,12 @@
   (is (= 0 (count (cols-as-rows {}))) "no columns")
   (is (= 0 (count (cols-as-rows {:a [] :b []}))) "empty columns"))
 
+(deftest test-cols-from-row-mask
+  (is (= {:a [1 4] :b ["X1" "X4"]}
+         (cols-from-row-mask { :a [1 2 3 4 5]
+                               :b ["X1" "X2" "X3" "X4" "X5"] }
+                             [true false false true false]))))
+
 (deftest test-cols-as-row-vecs
   (is (= '((1 0 1) (1 0 0) (1 0 2))
          (cols-as-row-vecs '([1 1 1] [0 0 0] [1 0 2])))

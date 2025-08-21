@@ -5,6 +5,7 @@
             [gmrs.wrangle :as wrangle]
             [gmrs.io.baseless :as bs]
             [gmrs.io.getters :as get]
+            [gmrs.preprocess :as preproc]
             [gmrs.mills.informed-popularity
              :refer [informed-popularity-recommend]]
             [gmrs.mills.nearest-options :refer [nearest-options-recommend]])
@@ -77,7 +78,7 @@
                                        *GlobalIOSetup*))))
   ; NOTE: this is intended so you could send in new cases without saving them
   ; to the storage
-  ([govern-name cases-filter options-filter case-cols]
+  ([govern-name cases-filter options-filter cases]
    ; TODO: actually apply cases-filter and options-filter, some filters
    ; guidance should come from the guvna/mil
    (let [gov (get/get-governor *GlobalIOSettings*
@@ -86,23 +87,33 @@
          mill ((gov :mill) *EnabledMills*),
          pull-strat ((gov :pull-strategy) *EnabledPullStrategies*),
          options-getter (get/get-options *GlobalIOSettings*
-                                         *GlobalIOSetup*)
+                                         *GlobalIOSetup*),
          inters-getter (get/get-inters *GlobalIOSettings*
-                                       *GlobalIOSetup*)]
-     ;; FIXME: wrap getters in preprocessing
-     ;; TODO: start by getting some from getters and running common preproc;
-     ;; save col groups along with transform functions and preparation objs
-     (loop [sample-number 1,
-            new-recs (mill case-cols (first options-getter) gov),
-            accum-recs [],
-            remaining-options (rest options-getter)]
-       (if (or (empty? new-recs)
-               (not (pull-strat gov accum-recs sample-number)))
-         (take (gov :recs-amount) accum-recs)
-         (recur (inc sample-number)
-                (mill case-cols (first remaining-options) gov)
-                (wrangle/sort-rec-options (wrangle/stack accum-recs new-recs))
-                (rest remaining-options)))))))
+                                       *GlobalIOSetup*),
+         ;; TODO: what if the samples are not enough?
+         raw-options-sample (first options-getter),
+         raw-inters-sample (first inters-getter),
+         tags-and-transfs (preproc/retag-with-preproc-transforms
+                            (:tags-preprocessing gov)
+                            (map gov [:case-columns :option-columns
+                                      :inter-columns])
+                            [cases raw-options-sample raw-inters-sample])
+         adapted-tags-table (:tags-table tags-and-transfs),
+         preprocess-exec (partial preproc/execute-preprocessing-instructions
+                                  (:set-taggings tags-and-transfs))]
+     ;; TODO: what to do with scoring tables?
+     (apply mill
+            (concat []
+                    ;; preprocess the already gotten data as the starts. wrap
+                    ;; the getters for more; nothing below will ever see the raw
+                    ;; data
+                    (preprocess-exec adapted-tags-table
+                                     [cases raw-options-sample raw-inters-sample])
+                    [(map preprocess-exec (take 1 (drop 1 adapted-tags-table))
+                          (rest options-getter))
+                     (map preprocess-exec (drop 2 adapted-tags-table)
+                          (rest inters-getter))
+                     pull-strat])))))
 
 (defn -main [& args]
   (println "Running GMRS"))

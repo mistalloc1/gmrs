@@ -54,6 +54,16 @@ as it cares about the meaning of the data, it should go into preprocess."
                             cols)))
         (range col-length))))
 
+(defn cols-from-row-mask
+  "From a columns map, return it subset only selecting the rows for which the
+  mask has truthy values, the result still being a columns map."
+  [cols mask]
+  (let [indices (vec (filter #(nth mask %) (range (cols-row-count cols))))]
+    (reduce-kv (fn [cols-map col-name col] (assoc cols-map col-name
+                                                 (mapv col indices)))
+               {}
+               cols)))
+
 (defn slice
   "Get elements from start until (not including) end. Works on column sets and
   native collections."
