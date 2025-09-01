@@ -82,8 +82,7 @@
                (set/intersection (set (filter :tags (:option-columns old-govern)))
                              (set (filter :tags (:case-columns old-govern))))]
            (if (pos? (+ (count common-num-feats) (count common-tags-feats)))
-             {:mill :nearest-options :tag-fields common-tags-feats
-              :number-fields common-num-feats}
+             {:mill :nearest-options}
              {:mill :informed-popularity}))))
 
 (defn autogovern

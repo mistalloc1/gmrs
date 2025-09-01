@@ -71,7 +71,7 @@
   (merge (update
            attrib-map
            :str init-or-inc-if-pos)
-         (if (< (count value) 32)
+         (when (< (count value) 32)
            (reduce into {}
                    [(diag-potential-datetime value attrib-map)
                     (when (is-numtype? value #{\- \+ \space \tab}
@@ -80,9 +80,9 @@
                     (when (is-numtype? value #{\- \+ \e \. \space \tab}
                                        Float/parseFloat)
                       (bump-for [:float :needs-conv] attrib-map))]))
-         (if (and (< (count value) 2048)
-                  (not (and (number? (:tags attrib-map))
-                            (neg? (:tags attrib-map)))))
+         (when (and (< (count value) 2048)
+                    (not (and (number? (:tags attrib-map))
+                              (neg? (:tags attrib-map)))))
            (diag-potential-tags value attrib-map full-series-size))))
 
 (defn diag-all-values
@@ -99,10 +99,12 @@
      ;; FIXME: handle the special :needs-conv case which could come from multiple
      ;; underlying "types"
      ;; FIXME: prefer integers to floats which also capture them in diag
+     ;; FIXME: when do the numbers get :number-scale tag?
      (set
        (filter keyword?
-               (map (fn [[attr diag-info]] (if (and (number? diag-info)
-                                                    (enough? diag-info full-size))
+               (map (fn [[attr diag-info]] (when (and
+                                                   (number? diag-info)
+                                                   (enough? diag-info full-size))
                                              attr))
                     attrib-map)))
      (recur

@@ -49,12 +49,13 @@ enough so it can be used from outside of Clojure).
 - [x] loading CSVs through API
 - [x] sort out the basic dataframe and math dependencies we'll use (for now, see dev-intro)
 - [x] detect numbers and timestamps in governor, if provided as strings
-- [ ] provide a wrapper performing conversions marked by the governor (func composition)
+- [x] provide a wrapper performing conversions marked by the governor (func composition)
 - [ ] handle nils in preprocessing and/or existing mills
-- [ ] allow describing cases through their previous interacted options
-- [ ] separate mills for nearest options from interactions (when known)
+- [x] allow describing cases through their previous interacted options
+- [ ] separate mills for nearest options from similar cases (if no interactions)
 - [x] handle pagination from the gives
 - [x] strategy for consuming the right amount of pages
+- [ ] the method of selecting mills should have passably sound logic
 - [ ] extend preprocessing for handling data from EDGAR
 - [ ] extend preprocessing for handling data from AniD
 - [ ] add some type guards (and replace existing) using Clojure spec

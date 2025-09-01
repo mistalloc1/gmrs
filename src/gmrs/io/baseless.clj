@@ -42,7 +42,7 @@
                       (cycle
                         (partition-all (settings :page-size)
                                        (vals @inter-store))))]
-      :inter-sends [(fn [settings new-inters] (swap! case-store into
+      :inter-sends [(fn [settings new-inters] (swap! inter-store into
                             (map (fn [item]
                                    [((settings :inter-id) item) item])
                                  new-inters)))]

@@ -11,13 +11,16 @@ the new features.
 ### Added
 - Data diagnostics recognize numbers and some datetime formats
 - A separate mill function for recommending options similar to the known interactions
-- Centralized preprocessing for columns, controlled by the governor
+- Centralized preprocessing for columns, transformations prepared once, and items
+  from getters are wrapped in them
 
 ### Changed
 - Moved the math to a separate namespace so Neanderthal can be swapped for
   something else e.g. for targetting WebAssembly with GraalVM.
+- Mills now handle getting more data and retrying interaction in a unified way
+  (like finite state automatons)
 
-## [0.0.1]
+## [0.0.1] - 2025-07-18
 
 ### Added
 - CSV gives and API function for sending the contents.

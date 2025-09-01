@@ -37,6 +37,19 @@
                                 :city-warsaw '(0 0), :city-gdańsk [1 0],
                                 :city-kraków [0 1]})))
       "base case")
+  (is (= [{:id "inter5", :case-id 1190, :option-id 310},
+          {:id "inter11", :case-id 2130, :option-id 360},
+          {:id "inter10", :case-id 2130, :option-id 310},
+          {:id "inter3", :case-id 1190, :option-id 175}]
+         (take
+           4
+           (cols-as-rows {:id ["inter5" "inter11" "inter10" "inter3" "inter8"
+                               "inter9" "inter1" "inter2" "inter6" "inter12"
+                               "inter4" "inter7" "inter13"],
+                          :case-id [1190 2130 2130 1190 2130 1190 1190 1190 2130
+                                    2140 1190 2140 2140],
+                          :option-id [310 360 310 175 140 310 130 175 310 360
+                                      245 175 175]}))))
   (is (= 0 (count (cols-as-rows {}))) "no columns")
   (is (= 0 (count (cols-as-rows {:a [] :b []}))) "empty columns"))
 

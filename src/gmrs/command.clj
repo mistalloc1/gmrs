@@ -38,6 +38,12 @@
   (run! (fn [send-fun] (send-fun *GlobalIOSettings* cases))
         (:case-sends *GlobalIOSetup*)))
 
+(defn send-interactions!
+  "Add or replace recommendable cases (given as hash maps)."
+  [inters]
+  (run! (fn [send-fun] (send-fun *GlobalIOSettings* inters))
+        (:inter-sends *GlobalIOSetup*)))
+
 (defn send-options-csv!
   [path]
   (with-open [reader (io/reader path)]
@@ -102,6 +108,7 @@
          preprocess-exec (partial preproc/execute-preprocessing-instructions
                                   (:set-taggings tags-and-transfs))]
      ;; TODO: what to do with scoring tables?
+     ;; TODO: recs-amount
      (apply mill
             (concat []
                     ;; preprocess the already gotten data as the starts. wrap
