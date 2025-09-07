@@ -3,12 +3,16 @@
             [gmrs.command :refer :all]
             [gmrs.wrangle :as wrangle]
             [gmrs.io.getters :as get]
+            [gmrs.preprocess :as preproc]
             [gmrs.io.baseless :as bs]))
 
 (def example-governor
-  { :recs-amount 2 :mill :nearest-options
+  { :recs-amount 2 ;:mill :nearest-options
     :score-weakness-tolerance 0.02
-    :pull-strategy :target-top-heavy })
+    :pull-strategy :target-top-heavy
+    :tags-preprocessing
+    { :tags preproc/MultihotFromTags
+      :number-scale preproc/ZLogisticScale } })
 
 (def example-options
   [{:id 90 :name "Alligator" :danger "high" :time "2004-03-04" :temperature 25}
@@ -42,11 +46,21 @@
    {:id "inter12", :case-id 2140, :option-id 360}
    {:id "inter13", :case-id 2140, :option-id 175}])
 
-;;(take 12 (let [o (:id (wrangle/records-as-cols example-options))
-;;               c (:id (wrangle/records-as-cols example-cases))]
-;;           (repeatedly
-;;           (fn [] {:id "inter1" :case-id (rand-nth c)
-;;                   :option-id (rand-nth o)}))))
+(deftest test-force-mill
+  (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
+            *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
+                                      :option-id :id)]
+    (run! (fn [send-fun]
+            (send-fun *GlobalIOSettings* "test-guvna"
+                      (assoc example-governor :mill :informed-popularity)))
+        (:govern-sends *GlobalIOSetup*))
+    (is (:mill (get/get-governor *GlobalIOSettings* *GlobalIOSetup*
+                                 "test-guvna"))
+        :informed-popularity)
+    (force-mill! "test-guvna" :nearest-options)
+    (is (:mill (get/get-governor *GlobalIOSettings* *GlobalIOSetup*
+                                 "test-guvna"))
+        :nearest-options)))
 
 (deftest test-integr-send-and-get-options
   (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
@@ -75,8 +89,6 @@
             *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
                                       :inter-id :id)]
     (send-interactions! example-inters)
-    (run! #(println %) (first (get/get-inters  *GlobalIOSettings*
-                                           *GlobalIOSetup*)))
     (is (= (sort-by :id example-inters)
            (sort-by :id (wrangle/cols-as-rows
                           (first (get/get-inters *GlobalIOSettings*
@@ -86,11 +98,32 @@
 (deftest test-integr-recommend-to
   (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
             *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
-                                      :case-id :id
-                                      :option-id :id
-                                      :inter-id :id)]
+                                      :case-id :id, :option-id :id,
+                                      :inter-id :id,
+                                      :inter-case :case-id,
+                                      :inter-option :option-id)]
     (send-options! example-options)
     (send-interactions! example-inters)
-    (let [recommendations (recommend-to example-cases nil nil)])))
+    ;; NOTE: this assumes setting a custom guvna isn't handled by API, maybe it
+    ;; should
+    (run! (fn [send-fun]
+            (send-fun *GlobalIOSettings* "test-guvna" example-governor))
+        (:govern-sends *GlobalIOSetup*))
+    ;; Among other work, annotate the column attributes.
+    (autogovern! "test-guvna")
+    (force-mill! "test-guvna" :nearest-options)
+    (let [recommendations (recommend-to
+                            "test-guvna" nil nil
+                            (with-meta
+                              example-cases
+                              { :io-settings *GlobalIOSettings* }))]
+      (println "REC" recommendations)
+      (is (= #{1190 2130 2140 2200} (keys recommendations))
+          "recommendations keyed by cases")
+      (is (= 2 (count (get recommendations 1190)))
+          "guvna recs-amount observed")
+      (is (some #{90 130 360} (map :id (get recommendations 2130)))
+          "some 'high danger' options should be for the 'high danger' case")
+      (is (number? (:score (get recommendations 2140)))))))
 
 ; (run-tests `gmrs.command-test)

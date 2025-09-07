@@ -57,7 +57,16 @@
   (is (= {:a [1 4] :b ["X1" "X4"]}
          (cols-from-row-mask { :a [1 2 3 4 5]
                                :b ["X1" "X2" "X3" "X4" "X5"] }
-                             [true false false true false]))))
+                             [true false false true false]))
+      "simple case")
+  (is (= {:john "lennon" :mary "stuart"}
+         (meta
+           (cols-from-row-mask (with-meta
+                               { :a [1 2 3 4 5]
+                                :b ["X1" "X2" "X3" "X4" "X5"] }
+                               {:john "lennon" :mary "stuart"})
+                             [true false false true false])))
+      "preserving metadata"))
 
 (deftest test-cols-as-row-vecs
   (is (= '((1 0 1) (1 0 0) (1 0 2))

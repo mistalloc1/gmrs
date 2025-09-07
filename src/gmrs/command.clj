@@ -8,7 +8,7 @@
             [gmrs.preprocess :as preproc]
             [gmrs.mills.informed-popularity
              :refer [informed-popularity-recommend]]
-            [gmrs.mills.nearest-options :refer [nearest-options-recommend]])
+            [gmrs.mills.nearest-options :refer [nearest-options-type-mill]])
   (:gen-class))
 
 (def ^:dynamic *GlobalIOSettings* (bs/toy-temp-baseless-io-settings))
@@ -16,7 +16,7 @@
 
 (def ^:dynamic *EnabledMills*
   { :informed-popularity informed-popularity-recommend
-    :nearest-options nearest-options-recommend })
+    :nearest-options nearest-options-type-mill})
 
 (def ^:dynamic *EnabledPullStrategies*
   { :target-top-heavy gv/target-top-heavy-pull-strategy })
@@ -77,6 +77,14 @@
                                    new-govern))
           (:govern-sends *GlobalIOSetup*))))
 
+(defn force-mill! [govern-name mill]
+  (let [old-govern (get/get-governor *GlobalIOSettings*
+                                     *GlobalIOSetup*
+                                     govern-name)]
+    (run! (fn [send-fun] (send-fun *GlobalIOSetup* govern-name
+                                   (assoc old-govern :mill mill)))
+          (:govern-sends *GlobalIOSetup*))))
+
 (defn recommend-to
   ([govern-name cases-filter options-filter]
    (recommend-to govern-name cases-filter options-filter
@@ -104,23 +112,33 @@
                             (map gov [:case-columns :option-columns
                                       :inter-columns])
                             [cases raw-options-sample raw-inters-sample])
-         adapted-tags-table (:tags-table tags-and-transfs),
+         set-taggings (:set-taggings tags-and-transfs),
          preprocess-exec (partial preproc/execute-preprocessing-instructions
-                                  (:set-taggings tags-and-transfs))]
-     ;; TODO: what to do with scoring tables?
-     ;; TODO: recs-amount
-     (apply mill
-            (concat []
-                    ;; preprocess the already gotten data as the starts. wrap
-                    ;; the getters for more; nothing below will ever see the raw
-                    ;; data
-                    (preprocess-exec adapted-tags-table
-                                     [cases raw-options-sample raw-inters-sample])
-                    [(map preprocess-exec (take 1 (drop 1 adapted-tags-table))
-                          (rest options-getter))
-                     (map preprocess-exec (drop 2 adapted-tags-table)
-                          (rest inters-getter))
-                     pull-strat])))))
+                                  (:tags-table tags-and-transfs))]
+     (assert (:mill gov))
+     (assert (:tags-preprocessing gov))
+     ;; TODO:require at least some of :case-columns etc. to be present
+     (println "TAGS" tags-and-transfs)
+     (println "PREPR" (preprocess-exec set-taggings
+                                  [cases raw-options-sample raw-inters-sample]))
+     (reduce-kv
+       (fn [recs-map case-id case-recs]
+         (assoc recs-map case-id (take (gov :recs-amount) case-recs)))
+       {}
+       (apply
+         mill
+         (concat []
+                 ;; preprocess the already gotten data as the starts. wrap
+                 ;; the getters for more; nothing below will ever see the raw
+                 ;; data
+                 (preprocess-exec set-taggings
+                                  [cases raw-options-sample raw-inters-sample])
+                 [(map #(first (preprocess-exec (take 1 (drop 1 set-taggings))
+                                                [%]))
+                       (rest options-getter))
+                  (map #(first (preprocess-exec (drop 2 set-taggings) [%]))
+                       (rest inters-getter))
+                  (partial pull-strat gov)]))))))
 
 (defn -main [& args]
   (println "Running GMRS"))

@@ -2,7 +2,7 @@
   (:require [gmrs.wrangle :as wrangle]))
 
 (defn get-governor [io-settings io-setup govern-name]
-  (some any?
+  (some identity
         (map (fn [give-fun] (give-fun io-settings govern-name))
              (:govern-gives io-setup))))
 

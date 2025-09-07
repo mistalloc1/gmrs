@@ -53,6 +53,7 @@ enough so it can be used from outside of Clojure).
 - [ ] handle nils in preprocessing and/or existing mills
 - [x] allow describing cases through their previous interacted options
 - [ ] separate mills for nearest options from similar cases (if no interactions)
+- [ ] test the most basic "informed popularity" mill
 - [x] handle pagination from the gives
 - [x] strategy for consuming the right amount of pages
 - [ ] the method of selecting mills should have passably sound logic

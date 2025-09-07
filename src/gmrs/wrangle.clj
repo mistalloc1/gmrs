@@ -59,10 +59,12 @@ as it cares about the meaning of the data, it should go into preprocess."
   mask has truthy values, the result still being a columns map."
   [cols mask]
   (let [indices (vec (filter #(nth mask %) (range (cols-row-count cols))))]
-    (reduce-kv (fn [cols-map col-name col] (assoc cols-map col-name
-                                                 (mapv col indices)))
-               {}
-               cols)))
+    (with-meta
+      (reduce-kv (fn [cols-map col-name col] (assoc cols-map col-name
+                                                    (mapv col indices)))
+                 {}
+                 cols)
+      (meta cols))))
 
 (defn slice
   "Get elements from start until (not including) end. Works on column sets and

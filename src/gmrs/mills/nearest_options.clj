@@ -73,7 +73,8 @@
    case-inters inter-opt-ids loose-opt-ids
    pull-strategy step-number last-step
    recommendations]
-  (let [io-settings (:io-settings (meta options)),
+  (assert (:io-settings (meta cases)))
+  (let [io-settings (:io-settings (meta cases)),
         option-id (io-settings :option-id)
         inter-option (io-settings :inter-option),
         inter-case (io-settings :inter-case),
@@ -156,6 +157,7 @@
 
 (defn nearest-options-from-cases-mill
   ([cases inters options gettable-inters gettable-options pull-strategy]
+   (assert (:io-settings (meta cases)))
    (let [case-id-col (:case-id (:io-settings (meta cases)))]
      ;; TODO: for now only mock some return values
      (map (fn [case-id] { [case-id :case-near-opt-marker] 1.0 })
@@ -167,10 +169,14 @@
   have to get recommended options from hopefully similar cases."
   [cases inters options gettable-inters gettable-options pull-strategy]
   ;; TODO: heuristic of getting two pages of inters, kinda weak
+  (assert (:io-settings (meta cases)))
+  (println "INT" (first gettable-inters))
   (let [more-inters (wrangle/stack inters (first gettable-inters)),
         io-settings (:io-settings (meta cases)),
-        case-ids-with-inters (map (set (:inter-case io-settings))
+        case-ids-with-inters (map (set ((:inter-case io-settings) more-inters))
                                   ((:case-id io-settings) cases))]
+    (println "CAS" cases)
+    (println "->" (wrangle/cols-from-row-mask cases (map not case-ids-with-inters)))
     (merge
       (nearest-options-from-cases-mill
         (wrangle/cols-from-row-mask cases (map not case-ids-with-inters))
