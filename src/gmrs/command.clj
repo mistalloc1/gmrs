@@ -95,7 +95,8 @@
   ([govern-name cases-filter options-filter cases]
    ; TODO: actually apply cases-filter and options-filter, some filters
    ; guidance should come from the guvna/mil
-   (let [gov (get/get-governor *GlobalIOSettings*
+   (let [cases (wrangle/records-as-cols cases), ; adapt from the input form
+         gov (get/get-governor *GlobalIOSettings*
                                *GlobalIOSetup*
                                govern-name)
          mill ((gov :mill) *EnabledMills*),
@@ -118,6 +119,7 @@
      (assert (:mill gov))
      (assert (:tags-preprocessing gov))
      ;; TODO:require at least some of :case-columns etc. to be present
+     (println "CASES" cases)
      (println "TAGS" tags-and-transfs)
      (println "PREPR" (preprocess-exec set-taggings
                                   [cases raw-options-sample raw-inters-sample]))

@@ -24,6 +24,13 @@ sequence of sequences of `(<= page-size)` amount of records. The lazy sequences
 remember the page size from the time of their creation, so you'll want to
 call the give again if you want the new page size.
 
+### Getters
+
+Gives are generally used throught the `io/getters.clj` namespace. It wraps
+all gives and provides the data from them in columnar format. The getter can
+be used as an infinite lazy sequence. Each of its elements take one page
+(of the configured page size) from each give that is set up.
+
 ## Sends
 
 Sends are functions that take as the args the IO settings map and the sequence

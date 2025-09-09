@@ -59,20 +59,21 @@
   ; TODO:consider the scenario of getting the same loose-options multiple times
   ; TODO:when do we want to retake more interactions?
   ; TODO:inspection or logging
-  ([cases inters options gettable-inters gettable-options pull-strategy]
+  ([cases options inters gettable-options gettable-inters pull-strategy]
    (nearest-options-from-interactions-mill
-     cases inters options
-     gettable-inters gettable-options
-     {} [] []
+     cases options inters
+     gettable-options gettable-inters
+     {} #{} #{}
      pull-strategy 1 nil
      {}))
-  ([cases inters options
-   gettable-inters gettable-options
-   ;; Case inters map case id -> interaction IDs. The opts are only and all the
-   ;; ones in the options arg.
-   case-inters inter-opt-ids loose-opt-ids
-   pull-strategy step-number last-step
-   recommendations]
+  ([cases options inters
+    gettable-options gettable-inters
+    ;; Case inters map case id -> interaction IDs. The opts are only and all the
+    ;; ones in the options arg, "inter" have interacted with the cases, the "loose"
+    ;; ones not.
+    case-inters inter-opt-ids loose-opt-ids
+    pull-strategy step-number last-step
+    recommendations]
   (assert (:io-settings (meta cases)))
   (let [io-settings (:io-settings (meta cases)),
         option-id (io-settings :option-id)
@@ -92,31 +93,31 @@
             only-relevant-inters
             (filter (fn [inter] (get case-inters (inter-case inter)))
                     new-case-inters)]
-        (recur cases (into inters only-relevant-inters) options
-               (rest gettable-inters) gettable-options
+        (recur cases options (into inters only-relevant-inters)
+               gettable-options (rest gettable-inters)
                case-inters inter-opt-ids loose-opt-ids
                pull-strategy (inc step-number) :more-inters
                recommendations))
 
       (and continue? (not= last-step :more-options)
-           (or
+           (let [inter-options (set (inter-option inters))]
+             (or
              ;; More interacted options needed
-             (some (complement inter-opt-ids) ; see if their details are unknown
+             (some #(not (inter-options %)) ; see if their details are unknown
                    ;; set of known inter options:
-                   (reduce into #{} (map inter-option inters)))
+                   inter-opt-ids)
              ;; More loose recommendable options needed
-             (empty? loose-opt-ids)))
+             (empty? loose-opt-ids))))
       (let [new-opts (first gettable-options),
             new-inter-opt-ids
             (into inter-opt-ids
                   (filter (fn [opt-id]
-                            (some #(= % opt-id)
-                                  (map inter-option inters)))
-                          (map (io-settings :option-id) new-opts))),
+                            (some #(= % opt-id) (inter-option inters)))
+                          ((io-settings :option-id) new-opts))),
             new-loose-opt-ids (filter (complement new-inter-opt-ids)
-                                      (map option-id new-opts))]
-        (recur cases inters (into options new-opts)
-               gettable-inters (rest gettable-options)
+                                      (option-id new-opts))]
+        (recur cases (into options new-opts) inters
+               (rest gettable-options) gettable-inters
                case-inters inter-opt-ids
                (vec (set (into loose-opt-ids new-loose-opt-ids)))
                pull-strategy (inc step-number) :more-options
@@ -125,8 +126,8 @@
       ;; Can recommend more
       (and continue? (not= last-step :more-recs)
            (seq loose-opt-ids))
-      (recur cases inters options
-             gettable-inters gettable-options
+      (recur cases options inters
+             gettable-options gettable-inters
              case-inters inter-opt-ids #{}
              pull-strategy (inc step-number) :more-recs
              ;; The score for an option is always its mean score against
@@ -142,7 +143,7 @@
                                                        options))
                    case-recs (wrangle/options-to-cases-scoring-table
                                opt-recs (zipmap (keys case-inters)
-                                                (map #(map inter-option %)
+                                                (map #(inter-option %)
                                                      (vals case-inters))))]
                (with-meta
                  (merge recommendations case-recs)
@@ -156,7 +157,7 @@
       :else recommendations))))
 
 (defn nearest-options-from-cases-mill
-  ([cases inters options gettable-inters gettable-options pull-strategy]
+  ([cases options inters gettable-options gettable-inters pull-strategy]
    (assert (:io-settings (meta cases)))
    (let [case-id-col (:case-id (:io-settings (meta cases)))]
      ;; TODO: for now only mock some return values
@@ -167,7 +168,7 @@
   "Look at the cases and determine which ones can get recommendations from
   similar options to their interactions, and which (with little interactions)
   have to get recommended options from hopefully similar cases."
-  [cases inters options gettable-inters gettable-options pull-strategy]
+  [cases options inters gettable-options gettable-inters pull-strategy]
   ;; TODO: heuristic of getting two pages of inters, kinda weak
   (assert (:io-settings (meta cases)))
   (println "INT" (first gettable-inters))
@@ -180,9 +181,9 @@
     (merge
       (nearest-options-from-cases-mill
         (wrangle/cols-from-row-mask cases (map not case-ids-with-inters))
-        options more-inters gettable-inters gettable-options
+        options more-inters gettable-options gettable-inters
         pull-strategy)
       (nearest-options-from-interactions-mill
         (wrangle/cols-from-row-mask cases case-ids-with-inters)
-        options more-inters gettable-inters gettable-options
+        options more-inters gettable-options gettable-inters
         pull-strategy))))
