@@ -49,7 +49,7 @@
     {:io-settings {:option-id :venue-name
                    :case-id :name}}))
 
-(deftest test-nearest-options-recommend
+(deftest test-nearest-options-scoring
   (testing "one feature (genres)"
     (let [cases-and-options
           (preproc/execute-preprocessing-instructions
@@ -60,8 +60,15 @@
             [example-cases example-options]),
           recs
           (wrangle/sorted-rec-options
-            (nearest-options-recommend (first cases-and-options)
-                                       (second cases-and-options)))]
+            (nearest-options-scoring
+              (select-keys (first cases-and-options)
+                           (wrangle/derived-col-names (first cases-and-options)
+                                                      [:genres]))
+              (select-keys (second cases-and-options)
+                           (wrangle/derived-col-names (second cases-and-options)
+                                                      [:genres]))
+              (:name (first cases-and-options))
+              (:venue-name (second cases-and-options))))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))
@@ -90,8 +97,15 @@
             [example-cases example-options]),
           recs
           (wrangle/sorted-rec-options
-            (nearest-options-recommend (first cases-and-options)
-                                       (second cases-and-options)))]
+            (nearest-options-scoring
+              (select-keys (first cases-and-options)
+                           (wrangle/derived-col-names (first cases-and-options)
+                                                      [:genres :city]))
+              (select-keys (second cases-and-options)
+                           (wrangle/derived-col-names (second cases-and-options)
+                                                      [:genres :city]))
+              (:name (first cases-and-options))
+              (:venue-name (second cases-and-options))))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))
@@ -121,8 +135,15 @@
             [example-cases example-options]),
           recs
           (wrangle/sorted-rec-options
-            (nearest-options-recommend (first cases-and-options)
-                                       (second cases-and-options)))]
+            (nearest-options-scoring
+              (select-keys (first cases-and-options)
+                           (wrangle/derived-col-names (first cases-and-options)
+                                                      [:genres :city :volume]))
+              (select-keys (second cases-and-options)
+                           (wrangle/derived-col-names (second cases-and-options)
+                                                      [:genres :city :volume]))
+              (:name (first cases-and-options))
+              (:venue-name (second cases-and-options))))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))

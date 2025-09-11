@@ -53,6 +53,12 @@
   (is (= 0 (count (cols-as-rows {}))) "no columns")
   (is (= 0 (count (cols-as-rows {:a [] :b []}))) "empty columns"))
 
+(deftest test-derived-column-names
+  (is (= [:genres-scifi :genres-horror :length]
+         (derived-col-names { :genres-scifi [1] :genres-horror [0]
+                              :length [26544] :quality [1] }
+                            [:genres :length]))))
+
 (deftest test-cols-from-row-mask
   (is (= {:a [1 4] :b ["X1" "X4"]}
          (cols-from-row-mask { :a [1 2 3 4 5]
@@ -110,7 +116,26 @@
                            :sound [nil "roar" nil]}))
       "add empty seq of records to existing columns")
   (is (= 0 (count (records-as-cols [])))
-      "empty input"))
+      "empty input")
+  (is (= { :meta-stuff "example" }
+         (meta (records-as-cols
+                 (with-meta
+                   [{:kind "fish" :color "silver"}
+                    {:kind "tiger" :color "orange" :sound "roar"}
+                    {:kind "ant"}]
+                   { :meta-stuff "example" }))))
+      "preserving metadata from records")
+  (is (= { :meta-stuff "example" }
+         (meta (records-as-cols
+                 [{:kind "fish" :color "silver"}
+                  {:kind "tiger" :color "orange" :sound "roar"}
+                  {:kind "ant"}]
+                 (with-meta
+                   { :kind ["fish" "tiger" "ant"]
+                    :color ["silver" "orange" nil]
+                    :sound [nil "roar" nil] }
+                   { :meta-stuff "example" }))))
+      "preserving metadata from existing-cols"))
 
 (deftest test-stack
   (let [data1 { :kind ["fish" "tiger"]

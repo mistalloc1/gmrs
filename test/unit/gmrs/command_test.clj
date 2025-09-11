@@ -102,6 +102,7 @@
                                       :inter-id :id,
                                       :inter-case :case-id,
                                       :inter-option :option-id)]
+    (send-cases! example-options) ; for autogovern
     (send-options! example-options)
     (send-interactions! example-inters)
     ;; NOTE: this assumes setting a custom guvna isn't handled by API, maybe it

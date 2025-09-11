@@ -54,14 +54,29 @@ as it cares about the meaning of the data, it should go into preprocess."
                             cols)))
         (range col-length))))
 
+(defn derived-col-names
+  "Get a sequence of column names (keys) inside col-set which are either equal
+  to patterns or seem to be derived from them by preprocessing transformations."
+  [col-set name-patterns]
+  (let [col-names (keys col-set)
+        pattern-strs (map name name-patterns)]
+    (filter (fn [col-name]
+              (let [col-str (name col-name)]
+                (some (fn [pattern]
+                        (or (= col-str pattern)
+                            (.startsWith col-str (str pattern "-"))))
+                      pattern-strs)))
+            col-names)))
+
 (defn cols-from-row-mask
   "From a columns map, return it subset only selecting the rows for which the
   mask has truthy values, the result still being a columns map."
   [cols mask]
   (let [indices (vec (filter #(nth mask %) (range (cols-row-count cols))))]
     (with-meta
-      (reduce-kv (fn [cols-map col-name col] (assoc cols-map col-name
-                                                    (mapv col indices)))
+      (reduce-kv (fn [cols-map col-name col]
+                   (assoc cols-map col-name
+                          (mapv #(nth col %) indices)))
                  {}
                  cols)
       (meta cols))))
@@ -101,12 +116,17 @@ as it cares about the meaning of the data, it should go into preprocess."
 
 ; TODO: we could detect calls on data which already columnar
 (defn records-as-cols
-  "Get data from records in a columnar format. Missing values will be nils."
-  ([records] (records-as-cols records {}))
-  ([records existing-cols] (records-as-cols records existing-cols
-                                            (cols-row-count existing-cols)))
-  ([records existing-cols col-length]
-   (if (empty? records) existing-cols
+  "Get data from records in a columnar format. Missing values will be nils. The
+  metadata will be either of the existing-cols, or - if there's none - from the
+  records being transformed."
+  ([records] (records-as-cols records {} 0 (meta records)))
+  ([records existing-cols] (records-as-cols
+                             records existing-cols
+                             (cols-row-count existing-cols)
+                             (meta existing-cols)))
+  ([records existing-cols col-length metadata]
+   (if (empty? records)
+     (with-meta existing-cols metadata)
      (let [rec (first records),
            new-cols
            (reduce into
@@ -127,7 +147,7 @@ as it cares about the meaning of the data, it should go into preprocess."
                                         (keys existing-cols)))))]
        (recur (rest records)
               (merge new-cols missing-value-cols)
-              (inc col-length))))))
+              (inc col-length) metadata)))))
 
 (defn sorted-rec-options
   "Given a scoring table, return a map of cases to vectors of maps { (options id)

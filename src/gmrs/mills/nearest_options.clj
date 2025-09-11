@@ -8,24 +8,13 @@
 (s/def ::no-nils (s/coll-of some?))
 
 ; TODO: handle nils, no fields supplied
-(defn nearest-options-recommend
-  [cases options]
-  (assert (:option-id (:io-settings (meta options))))
-  (assert (:case-id (:io-settings (meta cases))))
-  (let [option-id-col (:option-id (:io-settings (meta options))),
-        case-id-col (:case-id (:io-settings (meta cases))),
-        option-row-vecs (wrangle/cols-as-row-vecs (dissoc options
-                                                          option-id-col))]
+(defn nearest-options-scoring
+  "Return a scoring table. It needs to be supplied useful col sets for both
+  cases and options, and the separate vectors (columns) of their ids."
+  [cases options case-ids option-ids]
+  (let [option-row-vecs (wrangle/cols-as-row-vecs options)]
     ;; Iterate through cases and then options for computing scores
     ;; Create a scoring table with the appropriate metadata.
-    (when (nil? (case-id-col cases))
-      (throw
-        (ex-info "empty case id column" { :case-id-col case-id-col
-                                          :cases cases })))
-    (when (nil? (option-id-col options))
-      (throw
-        (ex-info "empty option id column" { :option-id-col option-id-col
-                                            :options options })))
     (with-meta
       (reduce
         into {}
@@ -36,11 +25,11 @@
                  (map (fn [option-id option-vec]
                          { [case-id option-id]
                            (math/pearson-correlation case-vec option-vec) })
-                       (option-id-col options)
+                       option-ids
                        option-row-vecs))
-             (case-id-col cases)
-             (wrangle/cols-as-row-vecs (dissoc cases case-id-col))))
-      { :cases (case-id-col cases) :options (option-id-col options)
+             case-ids
+             (wrangle/cols-as-row-vecs cases)))
+      { :cases case-ids :options option-ids
         :io-settings (:io-settings (meta cases)) })))
 
 (defn nearest-options-from-interactions-mill
@@ -118,8 +107,9 @@
                                       (option-id new-opts))]
         (recur cases (into options new-opts) inters
                (rest gettable-options) gettable-inters
-               case-inters inter-opt-ids
-               (vec (set (into loose-opt-ids new-loose-opt-ids)))
+               case-inters
+               (set (into inter-opt-ids new-inter-opt-ids))
+               (set (into loose-opt-ids new-loose-opt-ids))
                pull-strategy (inc step-number) :more-options
                recommendations))
 
@@ -136,11 +126,19 @@
              ;; pulling more interactions and options for each case (by
              ;; law of large numbers). (NOTE this remark makes sense if loose
              ;; opts reappear)
-             (let [opt-recs (nearest-options-recommend
-                              (filter (fn [opt] (inter-opt-ids (option-id opt)))
-                                        options)
-                              (filter (fn [opt] (loose-opt-ids (option-id opt)))
-                                                       options))
+             (let [inter-mask (map #(boolean (inter-opt-ids %))
+                                   (option-id options)),
+                   loose-mask (map #(boolean (loose-opt-ids %))
+                                   (option-id options)),
+                   inter-options (wrangle/cols-from-row-mask
+                                   options inter-mask),
+                   loose-options (wrangle/cols-from-row-mask
+                                   options loose-mask),
+                   opt-recs (nearest-options-scoring
+                              (dissoc inter-options option-id)
+                              (dissoc loose-options option-id)
+                              (option-id inter-options)
+                              (option-id loose-options))
                    case-recs (wrangle/options-to-cases-scoring-table
                                opt-recs (zipmap (keys case-inters)
                                                 (map #(inter-option %)

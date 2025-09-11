@@ -14,9 +14,14 @@ decline recommendations. Information about the decision (and whether there was
 an user agreement) can be stored and used in later recommendations. Decisions
 can be referred to in the code as "decs".
 
-Other *interactions* involving known cases and options can also be retrieved 
+Other *interactions* involving known cases and options can also be retrieved
 to help in the decisions. The interactions can be referred to in the code as
 "inters".
+
+### Handling cases, options, interactions
+
+NOTE You need to send at least some of each one in order for the "autogovern"
+mechanism to diagnose the types of data (features) available.
 
 ### Governors and mills
 
