@@ -121,7 +121,18 @@
            [{ :country #{:tags :str :group-123},
               :avg-price #{:int :number-scale} }
             { :country #{:tags :str :group-123},
-              :checkin-until #{:str :needs-conv :time-local} }]))))
+              :checkin-until #{:str :needs-conv :time-local} }]))
+      "base case")
+  (is (= { :ungroup:0:avg-price [{:col-name :avg-price, :set-n 0}],
+           :ungroup:0:country [{:col-name :country, :set-n 0}],
+           :ungroup:1:country [{:col-name :country, :set-n 1}],
+           :ungroup:1:checkin-until [{:col-name :checkin-until, :set-n 1}] }
+         (get-col-groups
+           [{ :country #{:tags :str},
+              :avg-price #{:int :number-scale} }
+            { :country #{:int},
+              :checkin-until #{:str :needs-conv :time-local} }]))
+      "don't group same names unless instructed"))
 
 (deftest test-prepared-transf-for-tag
   (let [tags-table { :upper ToUpper :append-count AppendInitialCount
@@ -136,15 +147,18 @@
           { :upper ToUpper :append-count AppendInitialCount
             :tags MultihotFromTags :number-scale ZLogisticScale }
           [{ :country [:str :append-count :group-1]
-             :name [:upper] }
+             :name [:upper]
+             :checkin-until #{:str} }
            { :country [:str :append-count :group-1]
              :avg-price [:number-scale :int] }]
           [hotel-cases hotel-options]
           (get-col-groups [{ :country [:str :append-count :group-1]
-                             :name [:upper] }
+                             :name [:upper]
+                             :checkin-until #{:str} }
                            { :country [:str :append-count :group-1]
                              :avg-price [:number-scale :int] }]))]
-    (is (= 3 (count groups-to-transfs))
+    (is (= #{:group-1 :ungroup:0:name :ungroup:1:avg-price}
+           (set (keys groups-to-transfs)))
         "correct number of groups")
     (is (= ["JOHN SMITH" "SARAH JOHNSON" "PIERRE DUBOIS"
             "MARIE LEROY" "ERIK ANDERSSON" "ANNA LINDQVIST"]
@@ -167,7 +181,8 @@
         (retag-with-preproc-transforms
             (:tags-preprocessing hotel-governor)
             [{ :country #{:tags :str :group-123},
-               :avg-price #{:int :number-scale} }
+               :avg-price #{:int :number-scale}
+               :checkin-until #{:str} }
              { :country #{:tags :str :group-123},
                :checkin-until #{:str :needs-conv :time-local} }]
             [hotel-cases hotel-options])
@@ -182,9 +197,9 @@
     (is (= #{:ungroup:0:avg-price :int :number-scale}
            (:avg-price (nth grouped-taggings 0)))
         "add the ungroup tag")
-    (is (= #{:group-123 :ungroup:0:avg-price :ungroup:1:checkin-until}
+    (is (= #{:group-123 :ungroup:0:avg-price}
            (set (keys tags-table)))
-        "only leave group entries in preprocessing table")
+        "only leave group entries in prepr table, don't include empty transform")
     (is (= [0.0 0.0 1.0 1.0 0.0 0.0]
            (:proc-France ((:group-123 tags-table)
                           (:country hotel-cases))))
@@ -197,12 +212,13 @@
               (:avg-price hotel-cases)))
         "an ugrouped transform performs correctly")))
 
-(deftest test-execute-preprocessing-instructions
+(deftest test-execute-preprocessing-instructions-base
   (let [preprocessed
         (execute-preprocessing-instructions
           (:tags-preprocessing hotel-governor)
           [{ :country #{:tags :str :group-123},
-             :avg-price #{:int :number-scale} }
+             :avg-price #{:int :number-scale}
+             :checkin-until () }
            { :country #{:tags :str :group-123},
              :checkin-until #{:str :needs-conv :time-local} }]
           [(with-meta
@@ -220,6 +236,11 @@
       (is (= (meta prepr-options)
              { :hello "goodbye" })
           "preprocessed options metadata"))
+    (testing "skipping columns with no preprocessing"
+      (is (not (get prepr-cases :amenities)))
+      (is (not (get prepr-options :amenities)))
+      (is (not (get prepr-cases :checkin-until)))
+      (is (not (get prepr-options :name))))
     (testing "number columns"
       (is (every? float? (:avg-price prepr-cases))
           "Number column mapped into a float scale when requested")
@@ -228,10 +249,6 @@
                    ((.prepare ZLogisticScale) (:avg-price hotel-cases))))
              (:avg-price prepr-cases))
           "The correct scaling function applied"))
-    (testing "passthrough columns"
-      (is (= (:checkin-until hotel-options)
-             (:checkin-until prepr-options))
-          "A column with no preprocessing piped through as needed"))
     (testing "grouped columns"
       (is (= [true true true]
              (mapv #(boolean (get prepr-cases %))
@@ -247,29 +264,35 @@
       (is (= [1.0 1.0 1.0 0.0 0.0]
              (:country-USA prepr-options)))
       (is (= [0.0 0.0 0.0 0.0 0.0]
-             (:country-Sweden prepr-options)))))
-  (testing "preprocessing transforms for groups"
-    (let [tags-and-transfs
-          (retag-with-preproc-transforms
-            (:tags-preprocessing hotel-governor)
-            [{ :country #{:tags :str :group-123},
-               :avg-price #{:int :number-scale} }
-             { :country #{:tags :str :group-123},
-               :checkin-until #{:str :needs-conv :time-local} }]
-            [hotel-cases hotel-options]),
-          grouped-taggings (:set-taggings tags-and-transfs),
-          tags-table (:tags-table tags-and-transfs),
-          preprocessed (execute-preprocessing-instructions
-                         tags-table grouped-taggings
-                         [hotel-cases hotel-options]),
-          prepr-cases (first preprocessed),
-          prepr-options (second preprocessed)]
-      (is (= (vec ((.execute ZLogisticScale)
-                   (:avg-price hotel-cases)
-                   ((.prepare ZLogisticScale) (:avg-price hotel-cases))))
-             (:avg-price prepr-cases))
-          "The correct scaling function applied")
-      (is (= [0.0 0.0 0.0 0.0 0.0]
              (:country-Sweden prepr-options))))))
+
+(deftest test-execute-preprocessing-instructions-retagged
+  (let [tags-and-transfs
+        (retag-with-preproc-transforms
+          (:tags-preprocessing hotel-governor)
+          [{ :country #{:tags :str :group-123},
+            :avg-price #{:int :number-scale} }
+           { :country #{:tags :str :group-123},
+            :checkin-until #{:str :needs-conv :time-local} }]
+          [hotel-cases hotel-options]),
+        grouped-taggings (:set-taggings tags-and-transfs),
+        tags-table (:tags-table tags-and-transfs),
+        preprocessed (execute-preprocessing-instructions
+                       tags-table grouped-taggings
+                       [hotel-cases hotel-options]),
+        prepr-cases (first preprocessed),
+        prepr-options (second preprocessed)]
+    (is (= (vec ((.execute ZLogisticScale)
+                 (:avg-price hotel-cases)
+                 ((.prepare ZLogisticScale) (:avg-price hotel-cases))))
+           (:avg-price prepr-cases))
+        "The correct scaling function applied")
+    (is (= [0.0 0.0 0.0 0.0 0.0]
+           (:country-Sweden prepr-options)))
+    (testing "skipping columns with no preprocessing"
+      (is (not (get prepr-cases :amenities)))
+      (is (not (get prepr-options :amenities)))
+      (is (not (get prepr-cases :checkin-until)))
+      (is (not (get prepr-options :name))))))
 
 ; (run-tests 'gmrs.preprocess-test)

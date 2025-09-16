@@ -6,6 +6,10 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
             [gmrs.math :as math]
             [gmrs.wrangle :as wrangle]))
 
+(defn longer [coll1 coll2]
+  (if (> (count coll1) (count coll2))
+    coll1 coll2))
+
 ; TODO: currently none of this handles nulls
 
 (defn z-logistic-scale
@@ -134,7 +138,8 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                 ;; NOTE: tags must be the same for every column!
                 (get (nth set-taggings (-> group first :set-n))
                      (-> group first :col-name)))]
-          { group-name (apply comp (filter func? transforms)) }))
+          (when (seq (remove nil? transforms))
+            { group-name (apply comp (filter func? transforms)) })))
       col-groups)))
 
 (defn retag-with-preproc-transforms
@@ -177,7 +182,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   "Apply all functions from tags-table to the columns in col-sets, that are
   indicated by tags in the set-taggings which map column names to data type tags.
 
-  Columns with no tags will be skipped in the output.
+  Columns with no tags or no preprocessing will be skipped in the output.
 
   Special tags in the form of :group-XYZ guarantee that all cols tagged this
   way will be seamlessly preprocessed together - for example for encoding tags
@@ -212,33 +217,48 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                     (mapv (fn [col-set] (with-meta {} (meta col-set))) col-sets)
                     groups))]
     (unroll-col-groups
-      (map
-        (fn [group]
-          (let [all-cols (map (fn [{:keys [col-name set-n]}]
-                                (get (nth col-sets set-n)
-                                     col-name))
-                              group),
-                starts-in-lump (reductions + 0 (map count all-cols))
-                set-indices-in-lump (map vector
-                                         (butlast starts-in-lump)
-                                         (rest starts-in-lump)),
-                cols-lumped (apply concat all-cols),
-                processed (reduce
-                            (fn [coll tag]
-                              (let [transf (get tags-table tag identity)]
-                                ((if (instance? PreprocessingTransform
-                                                transf)
-                                   (partial quick-transform transf)
-                                   transf)
-                                 coll)))
-                            cols-lumped
-                            ;; NOTE: tags must be the same for every column!
-                            (get (nth set-taggings (-> group first :set-n))
-                                 (-> group first :col-name)))]
-            (map-indexed (fn [i entry]
-                           (assoc entry :done
-                                  (apply wrangle/slice
-                                         (into [processed]
-                                               (nth set-indices-in-lump i)))))
-                         group)))
-       (vals (get-col-groups set-taggings))))))
+      (filter
+        some?
+        (map
+          (fn [[group-name group]]
+            (let [all-cols (map (fn [{:keys [col-name set-n]}]
+                                  (get (nth col-sets set-n)
+                                       col-name))
+                                group),
+                  starts-in-lump (reductions + 0 (map count all-cols))
+                  set-indices-in-lump (map vector
+                                           (butlast starts-in-lump)
+                                           (rest starts-in-lump)),
+                  cols-lumped (apply concat all-cols),
+                  processed (reduce
+                              (fn [coll transf] (if transf (transf coll)
+                                                  nil))
+                              cols-lumped
+                              ;; Get tags them and make them into a
+                              ;; transformations list.
+                              (longer
+                                (list nil)
+                                (filter
+                                  some?
+                                  (map (fn [tag]
+                                         (let [transf (get tags-table tag)]
+                                           (cond
+                                             (nil? transf) nil
+                                             (instance? PreprocessingTransform
+                                                        transf)
+                                             (partial quick-transform transf)
+                                             :else transf)))
+                                       ;; NOTE: tags must be the same for every
+                                       ;; column! (that's why we can take the
+                                       ;; first entry of the group)
+                                       (get (nth set-taggings
+                                                 (-> group first :set-n))
+                                            (-> group first :col-name))))))]
+              (when processed
+                (map-indexed (fn [i entry]
+                               (assoc entry :done
+                                      (apply wrangle/slice
+                                             (into [processed]
+                                                   (nth set-indices-in-lump i)))))
+                             group))))
+          (get-col-groups set-taggings))))))

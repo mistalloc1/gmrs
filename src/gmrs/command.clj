@@ -18,6 +18,10 @@
   { :informed-popularity informed-popularity-recommend
     :nearest-options nearest-options-type-mill})
 
+(def ^:dynamic *MillAcceptedColumnAttrs*
+  { :informed-popularity #{}
+    :nearest-options #{:int :float :tags}})
+
 (def ^:dynamic *EnabledPullStrategies*
   { :target-top-heavy gv/target-top-heavy-pull-strategy })
 
@@ -100,6 +104,7 @@
                                *GlobalIOSetup*
                                govern-name)
          mill ((gov :mill) *EnabledMills*),
+         accepted-col-attrs ((gov :mill) *MillAcceptedColumnAttrs*),
          pull-strat ((gov :pull-strategy) *EnabledPullStrategies*),
          options-getter (get/get-options *GlobalIOSettings*
                                          *GlobalIOSetup*),
@@ -109,7 +114,8 @@
          raw-options-sample (first options-getter),
          raw-inters-sample (first inters-getter),
          tags-and-transfs (preproc/retag-with-preproc-transforms
-                            (:tags-preprocessing gov)
+                            (select-keys (:tags-preprocessing gov)
+                                         accepted-col-attrs)
                             (map gov [:case-columns :option-columns
                                       :inter-columns])
                             [cases raw-options-sample raw-inters-sample])
@@ -119,7 +125,7 @@
      (assert (:mill gov))
      (assert (:tags-preprocessing gov))
      ;; TODO:require at least some of :case-columns etc. to be present
-     (println "CASES" cases)
+     (println "INIT" (:case-columns gov))
      (println "TAGS" tags-and-transfs)
      (println "PREPR" (preprocess-exec set-taggings
                                   [cases raw-options-sample raw-inters-sample]))

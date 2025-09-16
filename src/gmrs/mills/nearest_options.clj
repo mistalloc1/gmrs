@@ -12,6 +12,7 @@
   "Return a scoring table. It needs to be supplied useful col sets for both
   cases and options, and the separate vectors (columns) of their ids."
   [cases options case-ids option-ids]
+  (println "FEAT" (keys cases) cases)
   (let [option-row-vecs (wrangle/cols-as-row-vecs options)]
     ;; Iterate through cases and then options for computing scores
     ;; Create a scoring table with the appropriate metadata.
