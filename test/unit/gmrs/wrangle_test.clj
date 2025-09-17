@@ -151,6 +151,22 @@
     (is (= data3 (stack data1 data2)))
     (is (= data4 (stack data1 data2 data2)))))
 
+(deftest test-average-score
+  (is (= 0.4 (average-score [1.0 0.1 0.2 0.5 0.2]))))
+
+(deftest test-options-to-cases-scoring-table
+  (let [options-scoring-table
+        (with-meta
+          { [:opt-1 :opt-2] 0.7, [:opt-1 :opt-3] 0.3, [:opt-4 :opt-2] 0.7,
+            [:opt-4 :opt-3] 0.7 [:opt-2 :opt-2] 1.0 [:opt-2 :opt-3] 0.0 }
+          { :cases [:opt-1 :opt-4 :opt-2]
+            :options [:opt-2 :opt-3] }),
+        cases-to-options { :case-1 [:opt-1] :case-2 [:opt-1 :opt-4] }]
+    (is (= { [:case-1 :opt-2] 0.7, [:case-1 :opt-3] 0.3,
+             [:case-2 :opt-2] 0.7, [:case-2 :opt-3] 0.5 }
+           (options-to-cases-scoring-table options-scoring-table
+                                           cases-to-options)))))
+
 (deftest test-keywordify
   (is (= [:dill :dandelion :daisy]
          (keywordify ["dill" "dandelion" "daisy"]))

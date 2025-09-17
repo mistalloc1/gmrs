@@ -11,7 +11,7 @@ as it cares about the meaning of the data, it should go into preprocess."
 (defn average-score
   "Compute the average score, ignoring nils."
   [coll]
-  (let [coll (filter true? coll)]
+  (let [coll (filter number? coll)]
     (if (empty? coll) 0.0
       (/ (reduce + 0.0 coll) (count coll)))))
 
@@ -170,22 +170,24 @@ as it cares about the meaning of the data, it should go into preprocess."
 (defn options-to-cases-scoring-table
   "Given a scoring table made option-to-option, derive scores for the recommended
   options applicable when recommending them for the cases; do this by averaging
-  the scores for the options associated with the case."
+  the scores when 'recommending' for the options already associated with the case."
   [scoring-table cases-options]
+  (assert (:options (meta scoring-table)))
   (with-meta
     (reduce
       into {}
       (map (fn [[case-id case-assoc-options]]
              (reduce
                into {}
-               (map (fn [rec-opt-id]
-                      { [case-id rec-opt-id]
+               ;; For the scored "option-role" options, collect their average
+               ;; scores for the options known to have interacted with the case.
+               (map (fn [scr-opt-id]
+                      { [case-id scr-opt-id]
                         (average-score
                           (map (fn [ass-opt-id]
                                  (if-let [scoring (get scoring-table
-                                                       [ass-opt-id rec-opt-id])]
-                                   (:score scoring)
-                                   nil))
+                                                       [ass-opt-id scr-opt-id])]
+                                   scoring nil))
                                case-assoc-options)) })
                     (:options (meta scoring-table)))))
            cases-options))

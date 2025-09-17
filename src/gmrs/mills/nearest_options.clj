@@ -12,7 +12,6 @@
   "Return a scoring table. It needs to be supplied useful col sets for both
   cases and options, and the separate vectors (columns) of their ids."
   [cases options case-ids option-ids]
-  (println "FEAT" (keys cases) cases)
   (let [option-row-vecs (wrangle/cols-as-row-vecs options)]
     ;; Iterate through cases and then options for computing scores
     ;; Create a scoring table with the appropriate metadata.
@@ -153,7 +152,8 @@
                     :io-settings (:io-settings recommendations) })))
 
       ;; Recommendations OK or a repeated step
-      :else recommendations))))
+      :else (do (println "FIN" recommendations)
+                recommendations)))))
 
 (defn nearest-options-from-cases-mill
   ([cases options inters gettable-options gettable-inters pull-strategy]
@@ -175,7 +175,6 @@
         io-settings (:io-settings (meta cases)),
         case-ids-with-inters (map (set ((:inter-case io-settings) more-inters))
                                   ((:case-id io-settings) cases))]
-    (println "CAS" cases)
     (println "->" (wrangle/cols-from-row-mask cases (map not case-ids-with-inters)))
     (merge
       (nearest-options-from-cases-mill

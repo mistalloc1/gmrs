@@ -89,6 +89,12 @@
                                    (assoc old-govern :mill mill)))
           (:govern-sends *GlobalIOSetup*))))
 
+(defn prepr-with-ids
+  "Restore the ID column to the preprocessed version of the page."
+  [preprocessed id-col page]
+  (assoc (if (map? preprocessed) preprocessed (first preprocessed))
+         id-col (id-col page)))
+
 (defn recommend-to
   ([govern-name cases-filter options-filter]
    (recommend-to govern-name cases-filter options-filter
@@ -131,6 +137,7 @@
                                   [cases raw-options-sample raw-inters-sample]))
      (reduce-kv
        (fn [recs-map case-id case-recs]
+         (println "MP" case-id recs-map case-recs)
          (assoc recs-map case-id (take (gov :recs-amount) case-recs)))
        {}
        (apply
@@ -139,12 +146,22 @@
                  ;; preprocess the already gotten data as the starts. wrap
                  ;; the getters for more; nothing below will ever see the raw
                  ;; data
-                 (preprocess-exec set-taggings
-                                  [cases raw-options-sample raw-inters-sample])
-                 [(map #(first (preprocess-exec (take 1 (drop 1 set-taggings))
-                                                [%]))
+                 (let [prepr (preprocess-exec
+                               set-taggings
+                               [cases raw-options-sample raw-inters-sample])]
+                   [(prepr-with-ids (nth prepr 0) (*GlobalIOSettings* :case-id)
+                                    cases)
+                    (prepr-with-ids (nth prepr 1) (*GlobalIOSettings* :option-id)
+                                    raw-options-sample)
+                    (prepr-with-ids (nth prepr 2) (*GlobalIOSettings* :inter-id)
+                                    raw-inters-sample)])
+                 [(map #(prepr-with-ids
+                          (preprocess-exec (take 1 (drop 1 set-taggings)) [%])
+                          (*GlobalIOSettings* :option-id) %)
                        (rest options-getter))
-                  (map #(first (preprocess-exec (drop 2 set-taggings) [%]))
+                  (map #(prepr-with-ids
+                          (preprocess-exec (drop 2 set-taggings) [%])
+                          (*GlobalIOSettings* :inter-id) %)
                        (rest inters-getter))
                   (partial pull-strat gov)]))))))
 
