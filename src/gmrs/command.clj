@@ -122,19 +122,14 @@
          tags-and-transfs (preproc/retag-with-preproc-transforms
                             (select-keys (:tags-preprocessing gov)
                                          accepted-col-attrs)
-                            (map gov [:case-columns :option-columns
-                                      :inter-columns])
-                            [cases raw-options-sample raw-inters-sample])
+                            (map gov [:case-columns :option-columns])
+                            [cases raw-options-sample])
          set-taggings (:set-taggings tags-and-transfs),
          preprocess-exec (partial preproc/execute-preprocessing-instructions
                                   (:tags-table tags-and-transfs))]
      (assert (:mill gov))
      (assert (:tags-preprocessing gov))
      ;; TODO:require at least some of :case-columns etc. to be present
-     (println "INIT" (:case-columns gov))
-     (println "TAGS" tags-and-transfs)
-     (println "PREPR" (preprocess-exec set-taggings
-                                  [cases raw-options-sample raw-inters-sample]))
      (reduce-kv
        (fn [recs-map case-id case-recs]
          (println "MP" case-id recs-map case-recs)
@@ -142,28 +137,24 @@
        {}
        (apply
          mill
-         (concat []
-                 ;; preprocess the already gotten data as the starts. wrap
-                 ;; the getters for more; nothing below will ever see the raw
-                 ;; data
-                 (let [prepr (preprocess-exec
-                               set-taggings
-                               [cases raw-options-sample raw-inters-sample])]
-                   [(prepr-with-ids (nth prepr 0) (*GlobalIOSettings* :case-id)
-                                    cases)
-                    (prepr-with-ids (nth prepr 1) (*GlobalIOSettings* :option-id)
-                                    raw-options-sample)
-                    (prepr-with-ids (nth prepr 2) (*GlobalIOSettings* :inter-id)
-                                    raw-inters-sample)])
-                 [(map #(prepr-with-ids
-                          (preprocess-exec (take 1 (drop 1 set-taggings)) [%])
-                          (*GlobalIOSettings* :option-id) %)
-                       (rest options-getter))
-                  (map #(prepr-with-ids
-                          (preprocess-exec (drop 2 set-taggings) [%])
-                          (*GlobalIOSettings* :inter-id) %)
-                       (rest inters-getter))
-                  (partial pull-strat gov)]))))))
+         (concat
+           ;; preprocess the already gotten data as the starts. wrap
+           ;; the getters for more; nothing below will ever see the raw
+           ;; data
+           (let [prepr (preprocess-exec set-taggings [cases raw-options-sample])]
+             [(prepr-with-ids (nth prepr 0)
+                              (*GlobalIOSettings* :case-id)
+                              cases)
+              (prepr-with-ids (nth prepr 1)
+                              (*GlobalIOSettings* :option-id)
+                              raw-options-sample)
+              raw-inters-sample])
+           [(map #(prepr-with-ids
+                    (preprocess-exec (take 1 (drop 1 set-taggings)) [%])
+                    (*GlobalIOSettings* :option-id) %)
+                 (rest options-getter))
+            (rest inters-getter)
+            (partial pull-strat gov)]))))))
 
 (defn -main [& args]
   (println "Running GMRS"))

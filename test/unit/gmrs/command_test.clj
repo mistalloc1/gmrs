@@ -113,12 +113,15 @@
     ;; Among other work, annotate the column attributes.
     (autogovern! "test-guvna")
     (force-mill! "test-guvna" :nearest-options)
-    (let [recommendations (recommend-to
-                            "test-guvna" nil nil
-                            (with-meta
-                              example-cases
-                              { :io-settings *GlobalIOSettings* }))]
-      (println "REC" recommendations)
+    (let [recommendations
+          (recommend-to "test-guvna" nil nil
+                        (with-meta
+                          example-cases
+                          { :io-settings
+                            (assoc *GlobalIOSettings*
+                                   :case-id :id :option-id :id
+                                   :inter-id :id :inter-case :case-id
+                                   :inter-option :option-id) }))]
       (is (= #{1190 2130 2140 2200} (keys recommendations))
           "recommendations keyed by cases")
       (is (= 2 (count (get recommendations 1190)))

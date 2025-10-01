@@ -194,6 +194,22 @@ as it cares about the meaning of the data, it should go into preprocess."
     { :cases (keys cases-options) :options (:options (meta scoring-table))
       :io-settings (:io-settings (meta scoring-table)) }))
 
+(defn sorted-with-culled-already-interacted
+  "From a scoring table, get a map like from sorted-rec-options, but remove
+  the options with which the cases have already interacted."
+  [scoring-table cases-inters]
+  (let [opt-id-col (:option-id (:io-settings (meta scoring-table)))]
+    (reduce-kv
+      (fn [sorted-recs case-id opt-entries]
+        (let [this-case-inters (get cases-inters case-id)]
+          (assoc sorted-recs case-id
+                 (filter (fn [opt-entry]
+                           (not (some #(= % (opt-id-col opt-entry))
+                                      this-case-inters)))
+                         opt-entries))))
+      {}
+      (sorted-rec-options scoring-table))))
+
 (defn keywordify
   "Get list of keywords corresponding to the names (strings). They correspond to
   the strings exactly if possible, but non-alphanumeric characters outside of

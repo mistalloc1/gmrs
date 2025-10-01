@@ -14,6 +14,13 @@
                       coll
                       (preproc/z-logistic-scale coll))) })
 
+(def example-meta
+  {:io-settings { :option-id :venue-name
+                  :case-id :name
+                  :inter-case :case-id
+                  :inter-option :opt-id
+                  :inter-id :inter-id }})
+
 (def example-cases
   (with-meta
     (wrangle/records-as-cols
@@ -33,8 +40,8 @@
         :genres "oldies"
         :volume 70
         :city "Sandomierz"}])
-    {:io-settings {:option-id :venue-name
-                   :case-id :name}}))
+    example-meta))
+
 (def example-options
   (with-meta
     (wrangle/records-as-cols
@@ -46,8 +53,7 @@
         :genres "goth|rock"
         :volume -696
         :city "Kraków"}])
-    {:io-settings {:option-id :venue-name
-                   :case-id :name}}))
+    example-meta))
 
 (deftest test-nearest-options-scoring
   (testing "one feature (genres)"
@@ -164,5 +170,28 @@
           "Warsaw Jazz for alojzy")
       (is (neg? (:score (second (recs "alojzy/sandomierz"))))
           "Kraków Rock for alojzy"))))
+
+(deftest test-interacted-cases-mask
+  (is (= ["ferdek/warsaw" nil nil nil]
+         (interacted-cases-mask
+           example-cases
+           (wrangle/records-as-cols [{:case-id "ferdek/warsaw"
+                                      :opt-id "Warsaw Jazz"
+                                      :inter-id 0}])))))
+
+(deftest test-map-case-inters
+  (is (= {"ferdek/warsaw" [0 2], "sara/kraków" [1],
+          "ela/warsaw" [], "alojzy/sandomierz" []}
+         (map-case-inters
+           example-cases
+           (wrangle/records-as-cols [{:case-id "ferdek/warsaw"
+                                      :opt-id "Warsaw Jazz"
+                                      :inter-id 0}
+                                     {:case-id "sara/kraków"
+                                      :opt-id "Warsaw Jazz"
+                                      :inter-id 1}
+                                     {:case-id "ferdek/warsaw"
+                                      :opt-id "Kraków Rock"
+                                      :inter-id 2}])))))
 
 ; (run-tests 'gmrs.mills.nearest-options-test)
