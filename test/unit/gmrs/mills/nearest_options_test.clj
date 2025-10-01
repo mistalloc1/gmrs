@@ -73,8 +73,8 @@
               (select-keys (second cases-and-options)
                            (wrangle/derived-col-names (second cases-and-options)
                                                       [:genres]))
-              (:name (first cases-and-options))
-              (:venue-name (second cases-and-options))))]
+              (:name example-cases)
+              (:venue-name example-options)))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))
@@ -110,8 +110,8 @@
               (select-keys (second cases-and-options)
                            (wrangle/derived-col-names (second cases-and-options)
                                                       [:genres :city]))
-              (:name (first cases-and-options))
-              (:venue-name (second cases-and-options))))]
+              (:name example-cases)
+              (:venue-name example-options)))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))
@@ -148,8 +148,8 @@
               (select-keys (second cases-and-options)
                            (wrangle/derived-col-names (second cases-and-options)
                                                       [:genres :city :volume]))
-              (:name (first cases-and-options))
-              (:venue-name (second cases-and-options))))]
+              (:name example-cases)
+              (:venue-name example-options)))]
       (is (= "Warsaw Jazz" (:venue-name (first (recs "ferdek/warsaw"))))
           "top for ferdek")
       (is (pos? (:score (first (recs "ferdek/warsaw"))))

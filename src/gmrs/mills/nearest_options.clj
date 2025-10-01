@@ -12,6 +12,8 @@
   "Return a scoring table. It needs to be supplied useful col sets for both
   cases and options, and the separate vectors (columns) of their ids."
   [cases options case-ids option-ids]
+  (assert (= (wrangle/cols-row-count cases) (count case-ids)))
+  (assert (= (wrangle/cols-row-count options) (count option-ids)))
   (let [option-row-vecs (wrangle/cols-as-row-vecs options)]
     ;; Iterate through cases and then options for computing scores
     ;; Create a scoring table with the appropriate metadata.
@@ -56,8 +58,9 @@
 
 (defn nearest-options-from-interactions-mill
   "The mill that will recommend options for cases, assuming that the gettable
-  interactions will provide enough interacted options so that similar options
-  to them can be suggested.
+  interactions with these cases will provide enough interacted options so that
+  similar options to them can be suggested. This means that the cases should
+  have some interactions.
 
   It's best to pass the *interactions* already loaded for the assessment to the
   mill. But NOTE if so, all the interactions must be with one of the cases!
@@ -180,7 +183,6 @@
                                cases
                                (wrangle/stack inters more-inters))]
     (println "Not interacted:" (wrangle/cols-from-row-mask cases (map not case-ids-with-inters)))
-    ;; FIXME: test this separation somehow, fix the lack of 2nd path
     (merge
       (nearest-options-from-cases-mill
         (wrangle/cols-from-row-mask cases (map not case-ids-with-inters))
