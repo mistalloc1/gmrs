@@ -65,7 +65,7 @@
   It's best to pass the *interactions* already loaded for the assessment to the
   mill. But NOTE if so, all the interactions must be with one of the cases!
 
-  The *pull-strategy* is a function that takes only the current-scores and step
+  The *partial-pull-strat* is a function that takes only the current-scores and step
   number. It can be a 'raw' pull strategy function partialled with the guvna.
 
   Repeating the same *step* is assumed to mean that we received empty data, which
@@ -73,14 +73,12 @@
   ; TODO:consider the scenario of getting the same loose-options multiple times
   ; TODO:when do we want to retake more interactions?
   ; TODO:inspection or logging
-  ([cases options inters gettable-options gettable-inters pull-strategy]
-   (println "CSI" cases)
-   (println "INI" inters)
+  ([cases options inters gettable-options gettable-inters partial-pull-strat]
    (nearest-options-from-interactions-mill
      cases options inters
      gettable-options gettable-inters
      (map-case-inters cases inters)
-     pull-strategy 1 nil
+     partial-pull-strat 1 nil
      {}))
   ([cases options inters
     gettable-options gettable-inters
@@ -88,43 +86,47 @@
     ;; ones in the options arg, "inter" have interacted with the cases, the "loose"
     ;; ones not.
     case-inters
-    pull-strategy step-number last-step
+    partial-pull-strat step-number last-step
     recommendations]
   (assert (:io-settings (meta cases)))
   (let [io-settings (:io-settings (meta cases)),
         option-id (io-settings :option-id)
         inter-option (io-settings :inter-option),
         inter-case (io-settings :inter-case),
-        continue? (pull-strategy (wrangle/sorted-with-culled-already-interacted
-                                   recommendations case-inters)
-                                 step-number)]
+        continue? (partial-pull-strat
+                    (wrangle/sorted-with-culled-already-interacted
+                      recommendations case-inters)
+                    step-number)]
     (cond
       ;; Not enough inters to assess the cases.
       (and continue? (not= last-step :more-inters)
            (not= (count case-inters) (count cases))) ; TODO: always 1 enough?
-      (let [new-inters (first gettable-inters), ; expected to be to cases
+      (let [new-inters (wrangle/cols-as-rows
+                         (first gettable-inters)), ; expected to be to cases
             new-case-inters (reduce
                               (fn [m inter]
                                 (update m (inter-case inter)
                                         (fn [old] (conj old inter))))
                               case-inters new-inters),
             only-relevant-inters
-            (filter (fn [inter] (get case-inters (inter-case inter)))
-                    new-case-inters)]
-        (recur cases options (into inters only-relevant-inters)
+            (wrangle/records-as-cols
+              (filter (fn [inter] (get case-inters (inter-case inter)))
+                      new-case-inters))]
+        (recur cases options (wrangle/stack inters
+                                            only-relevant-inters)
                gettable-options (rest gettable-inters)
                case-inters
-               pull-strategy (inc step-number) :more-inters
+               partial-pull-strat (inc step-number) :more-inters
                recommendations))
 
       (and continue? (not= last-step :more-options)
            ;; More options needed - either 0 or all used for recommendations
            (= (count (:options (meta recommendations)))
               (count options)))
-      (recur cases (into options (first gettable-options)) inters
+      (recur cases (wrangle/stack options (first gettable-options)) inters
              (rest gettable-options) gettable-inters
              case-inters
-             pull-strategy (inc step-number) :more-options
+             partial-pull-strat (inc step-number) :more-options
              recommendations)
 
       ;; Can recommend more
@@ -134,7 +136,7 @@
       (recur cases options inters
              gettable-options gettable-inters
              case-inters
-             pull-strategy (inc step-number) :more-recs
+             partial-pull-strat (inc step-number) :more-recs
              ;; The score for an option is always its mean score against
              ;; the known target (already interacted) options. This
              ;; approximation should get more reliable with retries and
@@ -151,13 +153,15 @@
                                                 (map #(inter-option %)
                                                      (vals case-inters))))]
                (println "NEWR" case-recs)
+               (println "NEWR ini meta" (meta case-recs))
                (with-meta
                  (merge recommendations case-recs)
-                  { :cases (vec (set (into (:cases (meta recommendations))
-                                           (:cases (meta opt-recs)))))
-                    :options (vec (set (into (:options (meta recommendations))
-                                             (:options (meta opt-recs)))))
-                    :io-settings (:io-settings recommendations) })))
+                 { :cases (vec (set (into (:cases (meta recommendations))
+                                          (:cases (meta case-recs)))))
+                   :options (vec (set (into (:options (meta recommendations))
+                                           (:options (meta case-recs)))))
+                   :io-settings (:io-settings (meta opt-recs)) })))
+
 
       ;; Recommendations OK or a repeated step
       :else (do (println "FIN" recommendations)

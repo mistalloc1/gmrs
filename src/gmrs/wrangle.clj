@@ -98,20 +98,27 @@ as it cares about the meaning of the data, it should go into preprocess."
 (defn stack
   "Stack the added columnar data on the bottom of the orig data."
   [orig & added]
-  (let [first-stacked
-        (if (= (set (keys orig)) (set (keys (first added))))
-          (reduce into {}
-            (map (fn [[col-name orig-objs]]
-                  { col-name
-                    (concat orig-objs (col-name (first added))) })
-                orig))
-          (ex-info
-            "Cannot merge columnar data"
-            { :orig-keys (keys orig)
-              :add-keys (keys (first added)) }))]
-    (if (= 1 (count added))
-      first-stacked
-      (recur first-stacked (rest added)))))
+  (cond (zero? (count orig))
+        (if (= 1 (count added)) (first added)
+          (recur (first added) (rest added)))
+        (zero? (count (first added)))
+        (if (= 1 (count added)) orig
+          (recur orig (rest added)))
+        :else
+        (let [first-stacked
+              (if (= (set (keys orig)) (set (keys (first added))))
+                (reduce into {}
+                        (map (fn [[col-name orig-objs]]
+                               { col-name
+                                (concat orig-objs (col-name (first added))) })
+                             orig))
+                (ex-info
+                  "Cannot merge columnar data"
+                  { :orig-keys (keys orig)
+                   :add-keys (keys (first added)) }))]
+          (if (= 1 (count added))
+            first-stacked
+            (recur first-stacked (rest added))))))
 
 
 ; TODO: we could detect calls on data which already columnar
@@ -159,7 +166,8 @@ as it cares about the meaning of the data, it should go into preprocess."
                  { case-id
                    (sort-by
                      :score >
-                     (map (fn [opt-id] { (:option-id (:io-settings
+                     (map (fn [opt-id]
+                            { (:option-id (:io-settings
                                                        (meta scoring-table)))
                                          opt-id,
                                          :score (get scoring-table

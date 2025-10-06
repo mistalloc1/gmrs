@@ -149,7 +149,9 @@
                 :color ["silver" "orange" "brown" "brown"]
                 :sound [nil "roar" "bellow" "bellow"] }]
     (is (= data3 (stack data1 data2)))
-    (is (= data4 (stack data1 data2 data2)))))
+    (is (= data4 (stack data1 data2 data2)))
+    (is (= data1 (stack data1 {})))
+    (is (= data1 (stack {} data1 )))))
 
 (deftest test-sorted-rec-options
   (is { :c1 [{ :opt-id :o1 :score 0.3 }
