@@ -41,6 +41,7 @@
          ((:case-id io-settings) cases))))
 
 (defn map-case-inters
+  "Get a map of case IDs to IDs of inters that are associated."
   [cases inters]
   (let [io-settings (:io-settings (meta cases))
         inter-case-col (:inter-case io-settings)]
@@ -48,7 +49,7 @@
       (fn [case-inters inter]
         ;; If the interaction's case is one of the targets, update its entry
         ;; in case-inters.
-        (if (some #{(inter-case-col inter)} ((:case-id io-settings) cases))
+        (if (get case-inters (inter-case-col inter))
           (update case-inters (inter-case-col inter)
                   conj ((:inter-id io-settings) inter))
           case-inters))
@@ -91,6 +92,7 @@
   (assert (:io-settings (meta cases)))
   (let [io-settings (:io-settings (meta cases)),
         option-id (io-settings :option-id)
+        inter-id (io-settings :inter-id),
         inter-option (io-settings :inter-option),
         inter-case (io-settings :inter-case),
         continue? (partial-pull-strat
@@ -105,17 +107,21 @@
                          (first gettable-inters)), ; expected to be to cases
             new-case-inters (reduce
                               (fn [m inter]
-                                (update m (inter-case inter)
-                                        (fn [old] (conj old inter))))
+                                (if (get m (inter-case inter))
+                                  (update m (inter-case inter)
+                                          (fn [old] (conj old (inter-id inter))))
+                                  m))
                               case-inters new-inters),
             only-relevant-inters
             (wrangle/records-as-cols
               (filter (fn [inter] (get case-inters (inter-case inter)))
-                      new-case-inters))]
+                      new-inters))]
+        (tap> {:last-step last-step, :current-step :more-inters,
+               :new-data only-relevant-inters})
         (recur cases options (wrangle/stack inters
                                             only-relevant-inters)
                gettable-options (rest gettable-inters)
-               case-inters
+               new-case-inters
                partial-pull-strat (inc step-number) :more-inters
                recommendations))
 
@@ -123,11 +129,14 @@
            ;; More options needed - either 0 or all used for recommendations
            (= (count (:options (meta recommendations)))
               (count options)))
-      (recur cases (wrangle/stack options (first gettable-options)) inters
-             (rest gettable-options) gettable-inters
-             case-inters
-             partial-pull-strat (inc step-number) :more-options
-             recommendations)
+      (let [more-opts (first gettable-options)]
+        (tap> {:last-step last-step, :current-step :more-options,
+               :new-data more-opts})
+        (recur cases (wrangle/stack options more-opts) inters
+               (rest gettable-options) gettable-inters
+               case-inters
+               partial-pull-strat (inc step-number) :more-options
+               recommendations))
 
       ;; Can recommend more
       (and continue? (not= last-step :more-recs)
@@ -147,13 +156,16 @@
                               (dissoc options option-id)
                               (dissoc options option-id)
                               (option-id options)
-                              (option-id options))
+                              (option-id options)),
+                   case-opts (reduce (fn [case-to-opts inter]
+                                         (update case-to-opts (inter-case inter)
+                                                 conj (inter-option inter)))
+                                       {}
+                                       (wrangle/cols-as-rows inters)),
                    case-recs (wrangle/options-to-cases-scoring-table
-                               opt-recs (zipmap (keys case-inters)
-                                                (map #(inter-option %)
-                                                     (vals case-inters))))]
-               (println "NEWR" case-recs)
-               (println "NEWR ini meta" (meta case-recs))
+                               opt-recs case-opts)]
+               (tap> {:last-step last-step, :current-step :more-recs,
+                      :new-data case-recs})
                (with-meta
                  (merge recommendations case-recs)
                  { :cases (vec (set (into (:cases (meta recommendations))
@@ -164,8 +176,9 @@
 
 
       ;; Recommendations OK or a repeated step
-      :else (do (println "FIN" recommendations)
-                recommendations)))))
+      :else (do (tap> {:last-step last-step, :current-step :return-recs*})
+                (wrangle/sorted-with-culled-already-interacted
+                  recommendations case-inters))))))
 
 (defn nearest-options-from-cases-mill
   ([cases options inters gettable-options gettable-inters pull-strategy]

@@ -293,6 +293,5 @@
         "case 2, Marie Leroy gets recommendations")
     (is (< 0 (count (get recs "Erik Andersson")))
         "case 3, Erik Andersson gets recommendations")))
-(run-test test-nearest-options-from-interactions-mill)
 
 ; (run-tests 'gmrs.mills.nearest-options-test)
