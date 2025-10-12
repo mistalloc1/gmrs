@@ -250,7 +250,7 @@
        {:inter-id 2 :person-name "Erik Andersson" :hotel-name "Chateau Resort"}])
     { :io-settings hotel-io-settings }))
 
-(defn mock-pull-strat [_ step-n] (< step-n 5))
+(defn mock-pull-strat [_ step-n] (< step-n 15))
 
 (deftest test-nearest-options-from-interactions-mill
   (let [cases-and-options
@@ -273,7 +273,7 @@
                   :name hotel-options),
         recs (nearest-options-from-interactions-mill
                cases {}
-               {:inter-id [3], :person-name ["Marie Leroy"],
+               { :inter-id [3], :person-name ["Marie Leroy"],
                  :hotel-name ["Dump Hotel"]}
                ;; construct getters for options and inters
                (map (fn [row-page page-ids]
@@ -292,6 +292,14 @@
     (is (< 0 (count (get recs "Marie Leroy")))
         "case 2, Marie Leroy gets recommendations")
     (is (< 0 (count (get recs "Erik Andersson")))
-        "case 3, Erik Andersson gets recommendations")))
+        "case 3, Erik Andersson gets recommendations")
+    (is (not (some #{"Budget Inn"} (map :name (get recs "Sarah Johnson"))))
+        "don't recommend for already interacted options")
+    (is (and (some #{"Hotel Reims"} (map :name (get recs "Erik Andersson")))
+             (< 0.0 (:score
+                      (first (filter #(= (:name %) "Hotel Reims")
+                                     (get recs "Erik Andersson"))))))
+        "the option should be matched because of breakfast tag")))
+(run-test test-nearest-options-from-interactions-mill)
 
 ; (run-tests 'gmrs.mills.nearest-options-test)

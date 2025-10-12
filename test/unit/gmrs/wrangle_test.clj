@@ -138,9 +138,11 @@
       "preserving metadata from existing-cols"))
 
 (deftest test-stack
-  (let [data1 { :kind ["fish" "tiger"]
-                :color ["silver" "orange"]
-                :sound [nil "roar"] }
+  (let [data1 (with-meta
+                { :kind ["fish" "tiger"]
+                  :color ["silver" "orange"]
+                  :sound [nil "roar"] }
+                {:animals :many})
         data2 { :kind ["moose"] :color ["brown"] :sound ["bellow"] }
         data3 { :kind ["fish" "tiger" "moose"]
                 :color ["silver" "orange" "brown"]
@@ -149,7 +151,9 @@
                 :color ["silver" "orange" "brown" "brown"]
                 :sound [nil "roar" "bellow" "bellow"] }]
     (is (= data3 (stack data1 data2)))
+    (is (= {:animals :many} (meta (stack data1 data2))))
     (is (= data4 (stack data1 data2 data2)))
+    (is (= {:animals :many} (meta (stack data1 data2 data2))))
     (is (= data1 (stack data1 {})))
     (is (= data1 (stack {} data1 )))))
 

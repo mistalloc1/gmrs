@@ -51,7 +51,7 @@
         ;; in case-inters.
         (if (get case-inters (inter-case-col inter))
           (update case-inters (inter-case-col inter)
-                  conj ((:inter-id io-settings) inter))
+                  conj inter)
           case-inters))
       (zipmap ((:case-id io-settings) cases)
               (repeat []))
@@ -102,14 +102,15 @@
     (cond
       ;; Not enough inters to assess the cases.
       (and continue? (not= last-step :more-inters)
-           (not= (count case-inters) (count cases))) ; TODO: always 1 enough?
+           (not= (count case-inters)
+                 (wrangle/cols-row-count cases))) ; TODO: always 1 enough?
       (let [new-inters (wrangle/cols-as-rows
                          (first gettable-inters)), ; expected to be to cases
             new-case-inters (reduce
                               (fn [m inter]
                                 (if (get m (inter-case inter))
                                   (update m (inter-case inter)
-                                          (fn [old] (conj old (inter-id inter))))
+                                          (fn [old] (conj old inter)))
                                   m))
                               case-inters new-inters),
             only-relevant-inters
@@ -128,7 +129,7 @@
       (and continue? (not= last-step :more-options)
            ;; More options needed - either 0 or all used for recommendations
            (= (count (:options (meta recommendations)))
-              (count options)))
+              (wrangle/cols-row-count options)))
       (let [more-opts (first gettable-options)]
         (tap> {:last-step last-step, :current-step :more-options,
                :new-data more-opts})
@@ -141,7 +142,7 @@
       ;; Can recommend more
       (and continue? (not= last-step :more-recs)
            (< (count (:options (meta recommendations)))
-              (count options)))
+              (wrangle/cols-row-count options)))
       (recur cases options inters
              gettable-options gettable-inters
              case-inters
@@ -172,8 +173,7 @@
                                           (:cases (meta case-recs)))))
                    :options (vec (set (into (:options (meta recommendations))
                                            (:options (meta case-recs)))))
-                   :io-settings (:io-settings (meta opt-recs)) })))
-
+                   :io-settings (:io-settings (meta options)) })))
 
       ;; Recommendations OK or a repeated step
       :else (do (tap> {:last-step last-step, :current-step :return-recs*})

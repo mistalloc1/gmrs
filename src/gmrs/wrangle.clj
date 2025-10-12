@@ -100,18 +100,20 @@ as it cares about the meaning of the data, it should go into preprocess."
   [orig & added]
   (cond (zero? (count orig))
         (if (= 1 (count added)) (first added)
-          (recur (first added) (rest added)))
+          (recur (first added) (rest added))),
         (zero? (count (first added)))
         (if (= 1 (count added)) orig
-          (recur orig (rest added)))
+          (recur orig (rest added))),
         :else
         (let [first-stacked
               (if (= (set (keys orig)) (set (keys (first added))))
-                (reduce into {}
-                        (map (fn [[col-name orig-objs]]
-                               { col-name
-                                (concat orig-objs (col-name (first added))) })
-                             orig))
+                (with-meta
+                  (reduce into {}
+                          (map (fn [[col-name orig-objs]]
+                                 { col-name
+                                   (concat orig-objs (col-name (first added))) })
+                               orig))
+                  (meta orig))
                 (ex-info
                   "Cannot merge columnar data"
                   { :orig-keys (keys orig)
@@ -206,10 +208,14 @@ as it cares about the meaning of the data, it should go into preprocess."
   "From a scoring table, get a map like from sorted-rec-options, but remove
   the options with which the cases have already interacted."
   [scoring-table cases-inters]
-  (let [opt-id-col (:option-id (:io-settings (meta scoring-table)))]
+  (assert (or (empty? scoring-table) (:io-settings (meta scoring-table))))
+  (let [opt-id-col (:option-id (:io-settings (meta scoring-table))),
+        inter-opt-id (:inter-option (:io-settings (meta scoring-table)))]
     (reduce-kv
       (fn [sorted-recs case-id opt-entries]
-        (let [this-case-inters (get cases-inters case-id)]
+        (let [this-case-inters (if-let [inters (get cases-inters case-id)]
+                                 (inter-opt-id (records-as-cols inters))
+                                 nil)]
           (assoc sorted-recs case-id
                  (filter (fn [opt-entry]
                            (not (some #(= % (opt-id-col opt-entry))
