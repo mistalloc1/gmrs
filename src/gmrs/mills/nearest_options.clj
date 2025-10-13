@@ -1,6 +1,7 @@
 (ns gmrs.mills.nearest-options
   (:require
     [clojure.spec.alpha :as s]
+    [clojure.set :refer [subset?]]
     [gmrs.math :as math]
     [gmrs.wrangle :as wrangle]))
 
@@ -73,31 +74,30 @@
   means that we have to bail with the current recommendations."
   ; TODO:consider the scenario of getting the same loose-options multiple times
   ; TODO:when do we want to retake more interactions?
-  ; TODO:inspection or logging
-  ([cases options inters gettable-options gettable-inters partial-pull-strat]
+  ([cases options inters gettable-cases gettable-options gettable-inters
+    partial-pull-strat]
    (nearest-options-from-interactions-mill
-     cases options inters
+     cases options inters ; FIXME: only relevant inters...
      gettable-options gettable-inters
      (map-case-inters cases inters)
      partial-pull-strat 1 nil
      {}))
   ([cases options inters
     gettable-options gettable-inters
-    ;; Case inters map case id -> interaction IDs. The opts are only and all the
-    ;; ones in the options arg, "inter" have interacted with the cases, the "loose"
-    ;; ones not.
+    ;; Case inters map case id -> interactions.
     case-inters
     partial-pull-strat step-number last-step
     recommendations]
   (assert (:io-settings (meta cases)))
   (let [io-settings (:io-settings (meta cases)),
         option-id (io-settings :option-id)
-        inter-id (io-settings :inter-id),
         inter-option (io-settings :inter-option),
         inter-case (io-settings :inter-case),
+        recs-excluding-existing-inters
+        (wrangle/sorted-with-culled-already-interacted recommendations
+                                                       case-inters),
         continue? (partial-pull-strat
-                    (wrangle/sorted-with-culled-already-interacted
-                      recommendations case-inters)
+                    recs-excluding-existing-inters
                     step-number)]
     (cond
       ;; Not enough inters to assess the cases.
@@ -177,35 +177,146 @@
 
       ;; Recommendations OK or a repeated step
       :else (do (tap> {:last-step last-step, :current-step :return-recs*})
-                (wrangle/sorted-with-culled-already-interacted
-                  recommendations case-inters))))))
+                recs-excluding-existing-inters)))))
 
 (defn nearest-options-from-cases-mill
-  ([cases options inters gettable-options gettable-inters pull-strategy]
-   (assert (:io-settings (meta cases)))
-   (let [case-id-col (:case-id (:io-settings (meta cases)))]
-     ;; TODO: for now only mock some return values
-     (map (fn [case-id] { [case-id :case-near-opt-marker] 1.0 })
-        (case-id-col cases)))))
+  "Mill recommending options from cases (aux-cases) that are found and are
+  similar to the target ones.
+
+  Case-similarities is a scoring table comparing target cases to aux-cases."
+  ([cases options inters gettable-cases gettable-options gettable-inters
+    partial-pull-strat]
+   (nearest-options-from-cases-mill
+     cases options inters
+     gettable-cases gettable-options gettable-inters
+     [] {}
+     (map-case-inters cases inters)
+     partial-pull-strat 1 nil
+     {}))
+   ([cases options inters
+     gettable-options gettable-cases gettable-inters
+     aux-cases case-similarities
+     case-inters ; should be almost none but keep just in case, for target cases
+     partial-pull-strat step-number last-step
+     recommendations]
+  (assert (:io-settings (meta cases)))
+  (let [io-settings (:io-settings (meta cases)),
+        case-id (io-settings :case-id),
+        inter-option (io-settings :inter-option),
+        inter-case (io-settings :inter-case),
+        recs-excluding-existing-inters
+        (wrangle/sorted-with-culled-already-interacted recommendations
+                                                       case-inters),
+        continue? (partial-pull-strat
+                    recs-excluding-existing-inters
+                    step-number)]
+    (cond
+      (and continue? (not= last-step :more-cases)
+           ;; More cases needed - either 0 or all used for recommendations
+           (= (count (:options (meta case-similarities)))
+              (wrangle/cols-row-count aux-cases)))
+      (let [more-cases (first gettable-cases)]
+        (tap> {:last-step last-step, :current-step :more-cases,
+               :new-data more-cases})
+        (recur cases options inters
+               (rest gettable-cases) gettable-options gettable-inters
+               (wrangle/stack aux-cases more-cases) case-similarities
+               case-inters
+               partial-pull-strat (inc step-number) :more-cases
+               recommendations))
+
+      ;; Rank the aux-cases according to their usability.
+      (and continue? (not= last-step :rank-cases)
+           (< (count (:options (meta case-similarities)))
+              (wrangle/cols-row-count aux-cases)))
+      (let [more-sims (nearest-options-scoring
+                        cases aux-cases
+                        (case-id cases) (case-id aux-cases))]
+        (tap> {:last-step last-step, :current-step :rank-cases,
+               :new-data more-sims})
+        (recur cases options inters
+               (rest gettable-cases) gettable-options gettable-inters
+               aux-cases
+               (with-meta
+                 (merge case-similarities more-sims)
+                 { :cases (vec (set (into (:cases (meta case-similarities))
+                                          (:cases (meta more-sims)))))
+                  :options (vec (set (into (:options (meta case-similarities))
+                                           (:options (meta more-sims)))))
+                  :io-settings (:io-settings (meta cases)) })
+               case-inters
+               partial-pull-strat (inc step-number) :rank-cases
+               recommendations))
+
+      ;; Get more inters - all options from aux-relevant inters already used.
+      (and continue? (not= last-step :more-inters)
+           (let [aux-case-ids-set (set (case-id aux-cases))]
+             (subset? (set (inter-option
+                             ;; Get the inters relevant to the aux-cases.
+                             (wrangle/cols-from-row-mask
+                               inters
+                               (map aux-case-ids-set (inter-case inters)))))
+                      (set (:options (meta recommendations))))))
+      (let [new-inters (wrangle/cols-as-rows (first gettable-inters)),
+            all-inters (wrangle/stack inters new-inters)]
+        (tap> {:last-step last-step, :current-step :more-inters,
+               :new-data new-inters})
+        (recur cases options all-inters
+               gettable-cases gettable-options (rest gettable-inters)
+               aux-cases case-similarities (map-case-inters cases all-inters)
+               partial-pull-strat (inc step-number) :more-inters
+               recommendations))
+
+      ;; Create recommendations.
+      (and continue? (= last-step :more-inters))
+      (let [new-recs
+            (with-meta (reduce
+                         (fn [collected-recs inter]
+                           ;; For the interaction, associate its option with the
+                           ;; target cases according to their similarity to the
+                           ;; interaction's case.
+                           (reduce
+                             (fn [recs-for-option target-case-id]
+                               (assoc recs-for-option
+                                      [target-case-id (inter-option inter)]
+                                      (get case-similarities
+                                           [target-case-id (inter-case inter)])))
+                             collected-recs (case-id cases)))
+                         {} (wrangle/cols-as-rows inters))
+                       { :cases (case-id cases)
+                        :options (inter-option inters)
+                        :io-settings (:io-settings (meta cases)) })]
+        (tap> {:last-step last-step, :current-step :more-recs,
+               :new-data new-recs})
+        (recur cases options inters
+               gettable-cases gettable-options gettable-inters
+               aux-cases case-similarities case-inters
+               partial-pull-strat (inc step-number) :more-recs
+               new-recs))
+
+      ;; Recommendations OK or a repeated step
+      :else (do (tap> {:last-step last-step, :current-step :return-recs*})
+                recs-excluding-existing-inters)))))
 
 (defn nearest-options-type-mill
   "Look at the cases and determine which ones can get recommendations from
   similar options to their interactions, and which (with little interactions)
   have to get recommended options from hopefully similar cases."
-  [cases options inters gettable-options gettable-inters pull-strategy]
+  [cases options inters gettable-cases gettable-options gettable-inters pull-strategy]
   ;; TODO: heuristic of getting two pages of inters, kinda weak
   (assert (:io-settings (meta cases)))
   (let [more-inters (wrangle/stack inters (first gettable-inters)),
         case-ids-with-inters (interacted-cases-mask
                                cases
                                (wrangle/stack inters more-inters))]
-    (println "Not interacted:" (wrangle/cols-from-row-mask cases (map not case-ids-with-inters)))
+    (println "Not interacted:"
+             (wrangle/cols-from-row-mask cases (map not case-ids-with-inters)))
     (merge
       (nearest-options-from-cases-mill
         (wrangle/cols-from-row-mask cases (map not case-ids-with-inters))
-        options more-inters gettable-options gettable-inters
+        options gettable-cases more-inters gettable-options gettable-inters
         pull-strategy)
       (nearest-options-from-interactions-mill
         (wrangle/cols-from-row-mask cases case-ids-with-inters)
-        options more-inters gettable-options gettable-inters
+        options gettable-cases more-inters gettable-options gettable-inters
         pull-strategy))))

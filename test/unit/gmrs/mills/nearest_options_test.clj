@@ -252,6 +252,16 @@
 
 (defn mock-pull-strat [_ step-n] (< step-n 15))
 
+(defn make-getter [prepr-items orig-items-with-ids]
+  (map (fn [row-page page-ids]
+         (with-meta
+           (prepr-with-ids
+             (wrangle/records-as-cols row-page)
+             :name {:name page-ids})
+           (meta orig-items-with-ids)))
+       (partition-all 2 (wrangle/cols-as-rows prepr-items))
+       (partition-all 2 (:name orig-items-with-ids))))
+
 (deftest test-nearest-options-from-interactions-mill
   (let [cases-and-options
         (preproc/execute-preprocessing-instructions
@@ -275,15 +285,9 @@
                cases {}
                { :inter-id [3], :person-name ["Marie Leroy"],
                  :hotel-name ["Dump Hotel"]}
-               ;; construct getters for options and inters
-               (map (fn [row-page page-ids]
-                      (with-meta
-                        (prepr-with-ids
-                          (wrangle/records-as-cols row-page)
-                          :name {:name page-ids})
-                        (meta options)))
-                    (partition-all 2 (wrangle/cols-as-rows options))
-                    (partition-all 2 (:name hotel-options)))
+               ;; construct getters for cases, options and inters
+               (make-getter cases hotel-cases)
+               (make-getter options hotel-options)
                (map wrangle/records-as-cols
                     (partition-all 2 (wrangle/cols-as-rows hotel-inters)))
                mock-pull-strat)]
