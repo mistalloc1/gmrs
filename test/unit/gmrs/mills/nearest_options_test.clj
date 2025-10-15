@@ -284,7 +284,7 @@
         recs (nearest-options-from-interactions-mill
                cases {}
                { :inter-id [3], :person-name ["Marie Leroy"],
-                 :hotel-name ["Dump Hotel"]}
+                 :hotel-name ["Dump Hotel"] }
                ;; construct getters for cases, options and inters
                (make-getter cases hotel-cases)
                (make-getter options hotel-options)
@@ -304,6 +304,54 @@
                       (first (filter #(= (:name %) "Hotel Reims")
                                      (get recs "Erik Andersson"))))))
         "the option should be matched because of breakfast tag")))
-(run-test test-nearest-options-from-interactions-mill)
+
+(deftest test-nearest-options-from-cases-mill
+  (let [prepr-cases
+        (preproc/execute-preprocessing-instructions
+          tag-processing [{:amenities [:tags :str],
+                           :avg-price [:number-scale]}]
+          [hotel-cases]),
+        prepr-options (preproc/execute-preprocessing-instructions
+                        tag-processing [{:amenities [:tags :str],
+                                         :country [:tags :str],
+                                         :avg-price [:number-scale]}]
+                        [hotel-options]),
+        cases (wrangle/cols-from-row-mask
+                (prepr-with-ids
+                  (first prepr-cases)
+                  ; FIXME: look at masking/re-iding in -from-inters also?
+                  :name hotel-cases)
+                ;; Select John Smith, Marie Leroy and Anna Lindqvist
+                [true false false true false true]),
+        options (prepr-with-ids
+                  (first prepr-options)
+                  :name hotel-options),
+        recs (nearest-options-from-cases-mill
+               cases {}
+               { :inter-id [3], :person-name ["Marie Leroy"],
+                 :hotel-name ["Dump Hotel"] }
+               ;; construct getters for cases, options and inters
+               (make-getter (first prepr-cases) hotel-cases)
+               (make-getter options hotel-options)
+               (map wrangle/records-as-cols
+                    (partition-all 2 (wrangle/cols-as-rows hotel-inters)))
+               mock-pull-strat)]
+    (println "R" recs)
+    (is (= 3 (count recs)) "only recommend for requested cases")
+    (is (< 0 (count (get recs "John Smith")))
+        "case 1, John Smith gets recommendations")
+    (is (< 0 (count (get recs "Anna Lindqvist")))
+        "case 2, Anna Lindqvist gets recommendations")
+    (is (< 0 (count (get recs "Marie Leroy")))
+        "case 3, Marie Leroy gets recommendations")
+    (is (not (some #{"Dump Hotel"} (map :name (get recs "Marie Leroy"))))
+        "don't recommend for already interacted options")
+    (is (and (some #{"Hilton Hotel"} (map :name (get recs "John Smith")))
+             (< 0.0 (:score
+                      (first (filter #(= (:name %) "Hilton Hotel")
+                                     (get recs "John Smith"))))))
+        "option should be matched because of similar Andersson's inters")))
+(add-tap println)
+(run-test test-nearest-options-from-cases-mill)
 
 ; (run-tests 'gmrs.mills.nearest-options-test)

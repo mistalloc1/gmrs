@@ -194,7 +194,7 @@
      partial-pull-strat 1 nil
      {}))
    ([cases options inters
-     gettable-options gettable-cases gettable-inters
+     gettable-cases gettable-options gettable-inters
      aux-cases case-similarities
      case-inters ; should be almost none but keep just in case, for target cases
      partial-pull-strat step-number last-step
@@ -230,7 +230,7 @@
            (< (count (:options (meta case-similarities)))
               (wrangle/cols-row-count aux-cases)))
       (let [more-sims (nearest-options-scoring
-                        cases aux-cases
+                        (dissoc cases case-id) (dissoc aux-cases case-id)
                         (case-id cases) (case-id aux-cases))]
         (tap> {:last-step last-step, :current-step :rank-cases,
                :new-data more-sims})
@@ -241,9 +241,9 @@
                  (merge case-similarities more-sims)
                  { :cases (vec (set (into (:cases (meta case-similarities))
                                           (:cases (meta more-sims)))))
-                  :options (vec (set (into (:options (meta case-similarities))
+                   :options (vec (set (into (:options (meta case-similarities))
                                            (:options (meta more-sims)))))
-                  :io-settings (:io-settings (meta cases)) })
+                   :io-settings (:io-settings (meta cases)) })
                case-inters
                partial-pull-strat (inc step-number) :rank-cases
                recommendations))
@@ -257,7 +257,7 @@
                                inters
                                (map aux-case-ids-set (inter-case inters)))))
                       (set (:options (meta recommendations))))))
-      (let [new-inters (wrangle/cols-as-rows (first gettable-inters)),
+      (let [new-inters (first gettable-inters),
             all-inters (wrangle/stack inters new-inters)]
         (tap> {:last-step last-step, :current-step :more-inters,
                :new-data new-inters})
@@ -268,24 +268,32 @@
                recommendations))
 
       ;; Create recommendations.
-      (and continue? (= last-step :more-inters))
-      (let [new-recs
+      (and continue? (not= last-step :more-recs))
+      (let [usable-inters (wrangle/cols-from-row-mask
+                            inters
+                            (map #(some #{%}
+                                     (:options (meta case-similarities)))
+                                 (inter-case inters))),
+            new-recs
             (with-meta (reduce
                          (fn [collected-recs inter]
-                           ;; For the interaction, associate its option with the
-                           ;; target cases according to their similarity to the
-                           ;; interaction's case.
-                           (reduce
-                             (fn [recs-for-option target-case-id]
-                               (assoc recs-for-option
-                                      [target-case-id (inter-option inter)]
-                                      (get case-similarities
-                                           [target-case-id (inter-case inter)])))
-                             collected-recs (case-id cases)))
-                         {} (wrangle/cols-as-rows inters))
+                           (if (some #{(inter-case inter)}
+                                     (:options (meta case-similarities)))
+                             ;; For the interaction, associate its option with
+                             ;; the target cases according to their similarity to
+                             ;; the interaction's case.
+                             (reduce
+                               (fn [recs-for-option target-case-id]
+                                 (assoc recs-for-option
+                                        [target-case-id (inter-option inter)]
+                                        (get case-similarities
+                                             [target-case-id (inter-case inter)])))
+                               collected-recs (case-id cases))
+                             collected-recs))
+                         {} (wrangle/cols-as-rows usable-inters))
                        { :cases (case-id cases)
-                        :options (inter-option inters)
-                        :io-settings (:io-settings (meta cases)) })]
+                         :options (inter-option usable-inters)
+                         :io-settings (:io-settings (meta cases)) })]
         (tap> {:last-step last-step, :current-step :more-recs,
                :new-data new-recs})
         (recur cases options inters
