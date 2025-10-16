@@ -328,15 +328,15 @@
                   :name hotel-options),
         recs (nearest-options-from-cases-mill
                cases {}
-               { :inter-id [3], :person-name ["Marie Leroy"],
-                 :hotel-name ["Dump Hotel"] }
+               { :inter-id [3 4],
+                 :person-name ["Marie Leroy" "Sarah Johnson"],
+                 :hotel-name ["Dump Hotel" "Hilton Hotel"] }
                ;; construct getters for cases, options and inters
                (make-getter (first prepr-cases) hotel-cases)
                (make-getter options hotel-options)
                (map wrangle/records-as-cols
                     (partition-all 2 (wrangle/cols-as-rows hotel-inters)))
                mock-pull-strat)]
-    (println "R" recs)
     (is (= 3 (count recs)) "only recommend for requested cases")
     (is (< 0 (count (get recs "John Smith")))
         "case 1, John Smith gets recommendations")
@@ -346,12 +346,18 @@
         "case 3, Marie Leroy gets recommendations")
     (is (not (some #{"Dump Hotel"} (map :name (get recs "Marie Leroy"))))
         "don't recommend for already interacted options")
-    (is (and (some #{"Hilton Hotel"} (map :name (get recs "John Smith")))
+    (is (and (some #{"Chateau Resort"} (map :name (get recs "John Smith")))
+             (< 0.0 (:score
+                      (first (filter #(= (:name %) "Chateau Resort")
+                                     (get recs "John Smith"))))))
+        "option should be matched because of similar Andersson's inters")
+    (is (and (some #{"Hilton Hotel"} (map :name (get recs "Anna Lindqvist")))
              (< 0.0 (:score
                       (first (filter #(= (:name %) "Hilton Hotel")
-                                     (get recs "John Smith"))))))
-        "option should be matched because of similar Andersson's inters")))
-(add-tap println)
-(run-test test-nearest-options-from-cases-mill)
+                                     (get recs "Anna Lindqvist"))))))
+        "recommendation for Johnson - take max despite Andersson also having it")
+    (is (not (some #(close? 0.01 1.0 (:score %))
+                   (reduce into [] (vals recs))))
+        "no recs should get 1.0 score - contamination from the case itself")))
 
 ; (run-tests 'gmrs.mills.nearest-options-test)

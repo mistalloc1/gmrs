@@ -179,6 +179,9 @@
       :else (do (tap> {:last-step last-step, :current-step :return-recs*})
                 recs-excluding-existing-inters)))))
 
+(defn select-max [reference new-val]
+  (max (or reference -1.0) new-val))
+
 (defn nearest-options-from-cases-mill
   "Mill recommending options from cases (aux-cases) that are found and are
   similar to the target ones.
@@ -284,10 +287,15 @@
                              ;; the interaction's case.
                              (reduce
                                (fn [recs-for-option target-case-id]
-                                 (assoc recs-for-option
-                                        [target-case-id (inter-option inter)]
-                                        (get case-similarities
-                                             [target-case-id (inter-case inter)])))
+                                 (assoc
+                                   recs-for-option
+                                   [target-case-id (inter-option inter)]
+                                   ;; Update only with a higher value.
+                                   (select-max
+                                     (get recs-for-option
+                                          [target-case-id (inter-option inter)])
+                                     (get case-similarities
+                                          [target-case-id (inter-case inter)]))))
                                collected-recs (case-id cases))
                              collected-recs))
                          {} (wrangle/cols-as-rows usable-inters))
