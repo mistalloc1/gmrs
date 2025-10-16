@@ -102,7 +102,7 @@
     (cond
       ;; Not enough inters to assess the cases.
       (and continue? (not= last-step :more-inters)
-           (not= (count case-inters)
+           (not= (count (filter #(some any? %) (vals case-inters)))
                  (wrangle/cols-row-count cases))) ; TODO: always 1 enough?
       (let [new-inters (wrangle/cols-as-rows
                          (first gettable-inters)), ; expected to be to cases

@@ -270,21 +270,20 @@
                           {:amenities [:tags :str],
                            :country [:tags :str],
                            :avg-price [:number-scale]}]
-          [(wrangle/cols-from-row-mask
-             hotel-cases
-             ;; select only the ones to which we gave interactions
-             [false true false true true false])
-           hotel-options]),
-        cases (prepr-with-ids
-                (first cases-and-options)
-                :name hotel-cases),
+          [hotel-cases hotel-options]),
+        cases (wrangle/cols-from-row-mask
+                (prepr-with-ids
+                  (first cases-and-options)
+                  :name hotel-cases)
+                ;; select only the ones to which we gave interactions
+                [false true false true true false]),
         options (prepr-with-ids
                   (second cases-and-options)
                   :name hotel-options),
         recs (nearest-options-from-interactions-mill
                cases {}
                { :inter-id [3], :person-name ["Marie Leroy"],
-                 :hotel-name ["Dump Hotel"] }
+                :hotel-name ["Dump Hotel"] }
                ;; construct getters for cases, options and inters
                (make-getter cases hotel-cases)
                (make-getter options hotel-options)
@@ -319,7 +318,6 @@
         cases (wrangle/cols-from-row-mask
                 (prepr-with-ids
                   (first prepr-cases)
-                  ; FIXME: look at masking/re-iding in -from-inters also?
                   :name hotel-cases)
                 ;; Select John Smith, Marie Leroy and Anna Lindqvist
                 [true false false true false true]),
