@@ -181,19 +181,21 @@
                                       :inter-id 0}])))))
 
 (deftest test-map-case-inters
-  (is (= {"ferdek/warsaw" [0 2], "sara/kraków" [1],
-          "ela/warsaw" [], "alojzy/sandomierz" []}
-         (map-case-inters
-           example-cases
-           (wrangle/records-as-cols [{:case-id "ferdek/warsaw"
-                                      :opt-id "Warsaw Jazz"
-                                      :inter-id 0}
-                                     {:case-id "sara/kraków"
-                                      :opt-id "Warsaw Jazz"
-                                      :inter-id 1}
-                                     {:case-id "ferdek/warsaw"
-                                      :opt-id "Kraków Rock"
-                                      :inter-id 2}])))))
+  (let [inters [{:case-id "ferdek/warsaw"
+                 :opt-id "Warsaw Jazz"
+                 :inter-id 0}
+                {:case-id "sara/kraków"
+                 :opt-id "Warsaw Jazz"
+                 :inter-id 1}
+                {:case-id "ferdek/warsaw"
+                 :opt-id "Kraków Rock"
+                 :inter-id 2}]]
+    (is (= {"ferdek/warsaw" [(nth inters 0) (nth inters 2)],
+            "sara/kraków" [(nth inters 1)],
+            "ela/warsaw" [], "alojzy/sandomierz" []}
+           (map-case-inters
+             example-cases
+             (wrangle/records-as-cols inters))))))
 
 ;;;
 ;; Testing mills

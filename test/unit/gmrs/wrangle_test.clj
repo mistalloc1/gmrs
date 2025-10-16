@@ -191,8 +191,13 @@
           { [:case-1 :opt-2] 0.7, [:case-1 :opt-3] 0.3,
             [:case-2 :opt-2] 0.7, [:case-2 :opt-3] 0.5 }
           { :cases [:case-1 :case-2] :options [:opt-2 :opt-3]
-            :io-settings { :option-id :opt-id} })
-        { :case-1 [:opt-1 :opt-2 :opt-3] :case-2 [:opt-3] })))
+            :io-settings
+            { :option-id :opt-id :inter-case :cs :inter-option :op
+              :inter-id :id} })
+        { :case-1 (map (fn [o] {:cs :case-1 :op o :id (str o "-1") })
+                       [:opt-1 :opt-2 :opt-3])
+          :case-2 (map (fn [o] {:cs :case-2 :op o :id (str o "-1") })
+                       [:opt-3]) })))
 
 (deftest test-keywordify
   (is (= [:dill :dandelion :daisy]

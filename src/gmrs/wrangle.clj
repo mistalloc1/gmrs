@@ -206,20 +206,22 @@ as it cares about the meaning of the data, it should go into preprocess."
 
 (defn sorted-with-culled-already-interacted
   "From a scoring table, get a map like from sorted-rec-options, but remove
-  the options with which the cases have already interacted."
+  the options with which the cases have already interacted. The cases-inters
+  maps case IDs to interaction records."
   [scoring-table cases-inters]
   (assert (or (empty? scoring-table) (:io-settings (meta scoring-table))))
   (let [opt-id-col (:option-id (:io-settings (meta scoring-table))),
         inter-opt-id (:inter-option (:io-settings (meta scoring-table)))]
     (reduce-kv
       (fn [sorted-recs case-id opt-entries]
-        (let [this-case-inters (if-let [inters (get cases-inters case-id)]
-                                 (inter-opt-id (records-as-cols inters))
-                                 nil)]
+        (let [this-case-interd-opts
+              (if-let [inters (get cases-inters case-id)]
+                (inter-opt-id (records-as-cols inters))
+                nil)]
           (assoc sorted-recs case-id
                  (filter (fn [opt-entry]
                            (not (some #(= % (opt-id-col opt-entry))
-                                      this-case-inters)))
+                                      this-case-interd-opts)))
                          opt-entries))))
       {}
       (sorted-rec-options scoring-table))))

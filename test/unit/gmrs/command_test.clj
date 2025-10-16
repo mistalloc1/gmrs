@@ -42,9 +42,8 @@
    {:id "inter8", :case-id 2130, :option-id 140}
    {:id "inter9", :case-id 1190, :option-id 310}
    {:id "inter10", :case-id 2130, :option-id 310}
-   {:id "inter11", :case-id 2130, :option-id 360}
-   {:id "inter12", :case-id 2140, :option-id 360}
-   {:id "inter13", :case-id 2140, :option-id 175}])
+   {:id "inter11", :case-id 2140, :option-id 360}
+   {:id "inter12", :case-id 2140, :option-id 175}])
 
 (deftest test-force-mill
   (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
