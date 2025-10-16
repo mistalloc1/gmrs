@@ -52,7 +52,7 @@ enough so it can be used from outside of Clojure).
 - [x] provide a wrapper performing conversions marked by the governor (func composition)
 - [ ] handle nils in preprocessing and/or existing mills
 - [x] allow describing cases through their previous interacted options
-- [ ] separate mills for nearest options from similar cases (if no interactions)
+- [x] separate mills for nearest options from similar cases (if no interactions)
 - [ ] test the most basic "informed popularity" mill
 - [x] handle pagination from the gives
 - [x] strategy for consuming the right amount of pages

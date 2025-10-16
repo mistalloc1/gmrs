@@ -112,6 +112,8 @@
          mill ((gov :mill) *EnabledMills*),
          accepted-col-attrs ((gov :mill) *MillAcceptedColumnAttrs*),
          pull-strat ((gov :pull-strategy) *EnabledPullStrategies*),
+         cases-getter (get/get-cases *GlobalIOSettings*
+                                     *GlobalIOSetup*),
          options-getter (get/get-options *GlobalIOSettings*
                                          *GlobalIOSetup*),
          inters-getter (get/get-inters *GlobalIOSettings*
@@ -132,7 +134,6 @@
      ;; TODO:require at least some of :case-columns etc. to be present
      (reduce-kv
        (fn [recs-map case-id case-recs]
-         (println "MP" case-id recs-map case-recs)
          (assoc recs-map case-id (take (gov :recs-amount) case-recs)))
        {}
        (apply
@@ -150,6 +151,10 @@
                               raw-options-sample)
               raw-inters-sample])
            [(map #(prepr-with-ids
+                    (preprocess-exec (take 1 set-taggings) [%])
+                    (*GlobalIOSettings* :case-id) %)
+                 cases-getter)
+            (map #(prepr-with-ids
                     (preprocess-exec (take 1 (drop 1 set-taggings)) [%])
                     (*GlobalIOSettings* :option-id) %)
                  (rest options-getter))

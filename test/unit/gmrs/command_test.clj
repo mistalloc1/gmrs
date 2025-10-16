@@ -102,7 +102,7 @@
                                       :inter-id :id,
                                       :inter-case :case-id,
                                       :inter-option :option-id)]
-    (send-cases! example-options) ; for autogovern
+    (send-cases! example-cases) ; for autogovern
     (send-options! example-options)
     (send-interactions! example-inters)
     ;; NOTE: this assumes setting a custom guvna isn't handled by API, maybe it
@@ -122,12 +122,12 @@
                                    :case-id :id :option-id :id
                                    :inter-id :id :inter-case :case-id
                                    :inter-option :option-id) }))]
-      (is (= #{1190 2130 2140 2200} (keys recommendations))
+      (is (= #{1190 2130 2140 2200} (set (keys recommendations)))
           "recommendations keyed by cases")
       (is (= 2 (count (get recommendations 1190)))
           "guvna recs-amount observed")
       (is (some #{90 130 360} (map :id (get recommendations 2130)))
           "some 'high danger' options should be for the 'high danger' case")
-      (is (number? (:score (get recommendations 2140)))))))
+      (is (number? (:score (first (get recommendations 2140))))))))
 
 ; (run-tests `gmrs.command-test)

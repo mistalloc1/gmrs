@@ -330,9 +330,11 @@
     (merge
       (nearest-options-from-cases-mill
         (wrangle/cols-from-row-mask cases (map not case-ids-with-inters))
-        options gettable-cases more-inters gettable-options gettable-inters
+        options more-inters
+        gettable-cases gettable-options gettable-inters
         pull-strategy)
       (nearest-options-from-interactions-mill
         (wrangle/cols-from-row-mask cases case-ids-with-inters)
-        options gettable-cases more-inters gettable-options gettable-inters
+        options more-inters
+        gettable-cases gettable-options gettable-inters
         pull-strategy))))

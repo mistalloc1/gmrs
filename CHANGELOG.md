@@ -10,7 +10,8 @@ the new features.
 
 ### Added
 - Data diagnostics recognize numbers and some datetime formats
-- A separate mill function for recommending options similar to the known interactions
+- Integrated mill functions for recommending options similar to the known interactions
+  and options from similar cases (if no interactions)
 - Centralized preprocessing for columns, transformations prepared once, and items
   from getters are wrapped in them
 
