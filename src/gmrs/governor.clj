@@ -29,16 +29,17 @@
   current-recs should be sorted with wrangle/sort-rec-options. Returns binary
   decision on whether to pull a further sample."
   [gov current-recs step-number]
-  (let [scored-opts-count (wrangle/cols-row-count current-recs),
-        cost-of-recommendation (- 1.0
-                                  (if (or (empty? current-recs)
-                                          (zero? scored-opts-count))
-                                    0.0
-                                    (/ (sum-scores-with-decreasing-weight
-                                         0.0 current-recs 0 3 scored-opts-count)
-                                       scored-opts-count))),
-        cost-of-next-pull (* (:score-weakness-tolerance gov) step-number)]
-    (> cost-of-recommendation cost-of-next-pull)))
+  (when (< step-number 2000)
+    (let [scored-opts-count (wrangle/cols-row-count current-recs),
+          cost-of-recommendation (- 1.0
+                                    (if (or (empty? current-recs)
+                                            (zero? scored-opts-count))
+                                      0.0
+                                      (/ (sum-scores-with-decreasing-weight
+                                           0.0 current-recs 0 3 scored-opts-count)
+                                         scored-opts-count))),
+          cost-of-next-pull (* (:score-weakness-tolerance gov) step-number)]
+      (> cost-of-recommendation cost-of-next-pull))))
 
 (defn new-governor
   "Create a bare empty governor."

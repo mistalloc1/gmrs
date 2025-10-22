@@ -25,6 +25,9 @@
 (def ^:dynamic *EnabledPullStrategies*
   { :target-top-heavy gv/target-top-heavy-pull-strategy })
 
+(defn set-db-settings! [& specs]
+  (apply assoc *GlobalIOSettings* specs))
+
 (defn new-governor! [govern-name]
   (run! (fn [send-fun]
           (send-fun *GlobalIOSettings* govern-name (gv/new-governor)))
@@ -88,6 +91,9 @@
     (run! (fn [send-fun] (send-fun *GlobalIOSetup* govern-name
                                    (assoc old-govern :mill mill)))
           (:govern-sends *GlobalIOSetup*))))
+
+(defn peek-governor [govern-name]
+  (get/get-governor *GlobalIOSettings* *GlobalIOSetup* govern-name))
 
 (defn prepr-with-ids
   "Restore the ID column to the preprocessed version of the page."
