@@ -12,11 +12,13 @@ instead.
 - `:float` - float
 - `:tags` - default string interpretation, separated by pipes (|)
 - `:str` - string
-- `:needs-conv` - the column needs conversion from string to the indicated format
 - Time attributes:
   - `:date-zoned-with-time`
   - `:date-local`
   - `:time-local`
+- Conversion marking:
+  - `:<format>-needs-conv` - the column needs conversion from string to the
+     indicated format
 
 ### To implement
 

@@ -68,7 +68,7 @@
 (deftest test-diagnose-columns-from-source
   (is (= {:name #{:str},
           :country #{:tags :str},
-          :checkin-until #{:str :needs-conv :time-local},
+          :checkin-until #{:str :time-local-needs-conv :time-local},
           :avg-price #{:int},
           :amenities #{:str},
           :row-id #{:int}}
@@ -78,7 +78,7 @@
       "options")
   (is (= {:name #{:str},
           :country #{:tags :str},
-          :checkin-until #{:str :needs-conv :time-local},
+          :checkin-until #{:str :time-local-needs-conv :time-local},
           :avg-price #{:int},
           :amenities #{:str},
           :age #{:int},
@@ -100,14 +100,14 @@
           :option-columns
           {:name #{:str},
            :country #{:tags :str},
-           :checkin-until #{:str :needs-conv :time-local},
+           :checkin-until #{:str :time-local-needs-conv :time-local},
            :avg-price #{:int},
            :amenities #{:str},
            :row-id #{:int}}
           :case-columns
           {:name #{:str},
            :country #{:tags :str},
-           :checkin-until #{:str :needs-conv :time-local},
+           :checkin-until #{:str :time-local-needs-conv :time-local},
            :avg-price #{:int},
            :amenities #{:str},
            :age #{:int},

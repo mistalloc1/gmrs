@@ -30,16 +30,18 @@
   "Give an update for attrib-map with datetime related diagnostics of the string
   value."
   [value attrib-map]
-  (if (heuristic-is-datetime? value)
+  (when (heuristic-is-datetime? value)
     (let [value (str/trim value)]
     (merge (try (java.time.LocalDate/parse value)
-                (bump-for [:date-local :needs-conv] attrib-map)
+                (bump-for [:date-local :date-local-needs-conv] attrib-map)
                 (catch java.time.format.DateTimeParseException _ {}))
            (try (java.time.LocalTime/parse value)
-                (bump-for [:time-local :needs-conv] attrib-map)
+                (bump-for [:time-local :time-local-needs-conv] attrib-map)
                 (catch java.time.format.DateTimeParseException _ {}))
            (try (java.time.ZonedDateTime/parse value)
-                (bump-for [:date-zoned-with-time :needs-conv] attrib-map)
+                (bump-for [:date-zoned-with-time
+                           :date-zoned-with-time-needs-conv]
+                          attrib-map)
                 (catch java.time.format.DateTimeParseException _ {}))))))
 
 (defn is-numtype? [str-value nonnum-chars parse-fun]
@@ -76,10 +78,10 @@
                    [(diag-potential-datetime value attrib-map)
                     (when (is-numtype? value #{\- \+ \space \tab}
                                        Integer/parseInt)
-                      (bump-for [:integer :needs-conv] attrib-map))
+                      (bump-for [:integer :integer-needs-conv] attrib-map))
                     (when (is-numtype? value #{\- \+ \e \. \space \tab}
                                        Float/parseFloat)
-                      (bump-for [:float :needs-conv] attrib-map))]))
+                      (bump-for [:float :float-needs-conv] attrib-map))]))
          (when (and (< (count value) 2048)
                     (not (and (number? (:tags attrib-map))
                               (neg? (:tags attrib-map)))))
@@ -96,10 +98,7 @@
   ([coll] (diag-all-values coll {} (count coll)))
   ([coll attrib-map full-size]
    (if (empty? coll)
-     ;; FIXME: handle the special :needs-conv case which could come from multiple
-     ;; underlying "types"
      ;; FIXME: prefer integers to floats which also capture them in diag
-     ;; FIXME: when do the numbers get :number-scale tag?
      (set
        (filter keyword?
                (map (fn [[attr diag-info]] (when (and

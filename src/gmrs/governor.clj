@@ -41,14 +41,28 @@
           cost-of-next-pull (* (:score-weakness-tolerance gov) step-number)]
       (> cost-of-recommendation cost-of-next-pull))))
 
+(defn safe-parse [parse-fn]
+  (fn [s]
+    (when s (try
+              (parse-fn s)
+              (catch Exception _ nil)))))
+
+(def DefaultProcessing
+  { :tags preproc/MultihotFromTags
+    :float-needs-conv (safe-parse #(Float/parseFloat %))
+    :integer-needs-conv (safe-parse #(Integer/parseInt %))
+    :date-local-needs-conv (safe-parse #(java.time.LocalDate/parse %))
+    :time-local-needs-conv (safe-parse #(java.time.LocalTime/parse %))
+    :date-zoned-with-time-needs-conv (safe-parse #(java.time.ZonedDateTime/parse %))
+    :float preproc/ZLogisticScale
+    :integer preproc/ZLogisticScale })
+
 (defn new-governor
   "Create a bare empty governor."
   []
   { :recs-amount 5,
     :score-weakness-tolerance 0.02, :pull-strategy :target-top-heavy,
-    :tags-preprocessing
-    { :tags preproc/MultihotFromTags
-      :number-scale preproc/ZLogisticScale }})
+    :tags-preprocessing DefaultProcessing})
 
 (defn diagnose-columns-from-source
   "Get diagnostics for columns that are supplied from a give functions.
