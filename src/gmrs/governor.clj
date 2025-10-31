@@ -42,10 +42,13 @@
       (> cost-of-recommendation cost-of-next-pull))))
 
 (defn safe-parse [parse-fn]
-  (fn [s]
-    (when s (try
-              (parse-fn s)
-              (catch Exception _ nil)))))
+  (preproc/->PreprocessingTransform
+    (fn [_] nil)
+    (fn [s _]
+      (when s (try
+                (parse-fn s)
+                (catch Exception _ nil))))
+    10))
 
 (def DefaultProcessing
   { :tags preproc/MultihotFromTags

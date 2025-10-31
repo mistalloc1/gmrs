@@ -52,28 +52,25 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
 
 ;; Prepare function generates any transf object that should be passed as the
 ;; second arg to the execute function.
-(defrecord PreprocessingTransform [prepare execute])
+;; Priority is 5 for regular preprocessing, 10 for conversions necessary as
+;; a start.
+(defrecord PreprocessingTransform [prepare execute priority])
 
 (defn quick-transform [^PreprocessingTransform transf coll]
   ((.execute transf)
    coll
    ((.prepare transf) coll)))
 
-; TODO: allow for numeric columns where zero is meaningful (and shouldn't
-; disappear in scaling)
 ; TODO: binning
 (def ZLogisticScale
-  (->PreprocessingTransform z-logistic-scale apply-z-logistic-scale))
+  (->PreprocessingTransform z-logistic-scale apply-z-logistic-scale 5))
 
 (def MultihotFromTags
-  (->PreprocessingTransform (fn [_] "proc-") multihot-from-tags))
+  (->PreprocessingTransform (fn [_] "proc-") multihot-from-tags 5))
 
 ;;;
 ;;; Applying transforms to column sets (i.e. maps).
 ;;;
-
-;; FIXME: currently there is no notion of the correct order of applying
-;; transforms, but it'll probably exist in reality
 
 (defn func? [x] (instance? clojure.lang.IFn x))
 
@@ -104,17 +101,11 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
               (first set-taggings))
             (rest set-taggings) (inc set-n)))))
 
-(defn prepared-transf-for-tag
-  "Prepare transform if a record and create the function, otherwise leave as is."
-  ;;  TODO: maybe it should always have to be a record instance?
-  [tags-table coll tag]
-  (let [transf (get tags-table tag)]
-    ;; NOTE: Interestingly, instance? with PreprocessingTransform doesn't seem
-    ;; reliable here...
-    (if (record? transf)
-      (let [prep ((.prepare transf) coll)]
-        (fn [coll] ((.execute transf) coll prep)))
-      transf)))
+(defn prepared-transf
+  "Prepare transform and create the function."
+  [transf coll]
+  (let [prep ((.prepare transf) coll)]
+    (fn [coll] ((.execute transf) coll prep))))
 
 (defn get-groups-to-ready-transfs
   "Get a mapping of groups to functions combining all necessary preprocessing,
@@ -130,24 +121,32 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                               (get (nth col-sets set-n)
                                    col-name))
                             group),
+              ;; Lump all relevant columns from all sets for transformations.
               cols-lumped (apply concat all-cols),
-              transforms
+              tag-transforms
               (map
-                (partial prepared-transf-for-tag tags-table)
-                (repeat cols-lumped)
+                (partial get tags-table)
+                ;; Lookup the col-name in set-taggings to get the tags.
                 ;; NOTE: tags must be the same for every column!
                 (get (nth set-taggings (-> group first :set-n))
-                     (-> group first :col-name)))]
-          (when (seq (remove nil? transforms))
-            { group-name (apply comp (filter func? transforms)) })))
+                     (-> group first :col-name))),
+              sorted-tag-transforms
+              (sort-by #(.priority %) > (filter some? tag-transforms))]
+          (println group-name sorted-tag-transforms)
+          (when (some any? sorted-tag-transforms)
+            { group-name (apply
+                           comp
+                           (map prepared-transf
+                                sorted-tag-transforms
+                                (repeat cols-lumped))) })))
       col-groups)))
 
 (defn retag-with-preproc-transforms
   "Get tags-table and new set-taggings. It will add group tags for the columns
   from col-sets in set-taggings. The group tags will be mapped in tags-table
-  to already prepared transformation funcs, combining the relevant .execute
-  fields of PreprocessingTransform records and results from their .prepare
-  fields."
+  to already prepared transformation funcs, already combining the relevant
+  .execute fields of PreprocessingTransform records and results from their
+  .prepare fields."
   [tags-table set-taggings col-sets]
   (let [col-groups (get-col-groups set-taggings),
         groups-to-transfs (get-groups-to-ready-transfs tags-table

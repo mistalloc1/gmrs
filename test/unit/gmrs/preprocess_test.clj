@@ -106,11 +106,12 @@
   (map (fn [elem] (str (:init-count transf) elem))
        coll))
 (def AppendInitialCount (->PreprocessingTransform append-init-count-prepare
-                                                  append-init-count-execute))
+                                                  append-init-count-execute
+                                                  5))
 
 (defn to-upper-prepare [coll] "Upper preparation")
 (defn to-upper-execute [coll transf] (map str/upper-case coll))
-(def ToUpper (->PreprocessingTransform to-upper-prepare to-upper-execute))
+(def ToUpper (->PreprocessingTransform to-upper-prepare to-upper-execute 5))
 
 (deftest test-get-col-groups
   (is (= { :group-123 [{ :col-name :country, :set-n 1 },
@@ -276,9 +277,9 @@
             :checkin-until #{:str :needs-conv :time-local} }]
           [hotel-cases hotel-options]),
         grouped-taggings (:set-taggings tags-and-transfs),
-        tags-table (:tags-table tags-and-transfs),
+        grouped-tags-table (:tags-table tags-and-transfs),
         preprocessed (execute-preprocessing-instructions
-                       tags-table grouped-taggings
+                       grouped-tags-table grouped-taggings
                        [hotel-cases hotel-options]),
         prepr-cases (first preprocessed),
         prepr-options (second preprocessed)]
