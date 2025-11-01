@@ -20,7 +20,8 @@
 
 (def ^:dynamic *MillAcceptedColumnAttrs*
   { :informed-popularity #{}
-    :nearest-options #{:int :float :tags}})
+    :nearest-options #{:integer :integer-needs-conv :float :float-needs-conv
+                       :tags}})
 
 (def ^:dynamic *EnabledPullStrategies*
   { :target-top-heavy gv/target-top-heavy-pull-strategy })

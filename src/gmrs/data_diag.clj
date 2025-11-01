@@ -77,7 +77,8 @@
            (reduce into {}
                    [(diag-potential-datetime value attrib-map)
                     (when (is-numtype? value #{\- \+ \space \tab}
-                                       Integer/parseInt)
+                                       ;; int literal specs don't allow whitespace
+                                       (comp Integer/parseInt str/trim))
                       (bump-for [:integer :integer-needs-conv] attrib-map))
                     (when (is-numtype? value #{\- \+ \e \. \space \tab}
                                        Float/parseFloat)
@@ -86,6 +87,12 @@
                     (not (and (number? (:tags attrib-map))
                               (neg? (:tags attrib-map)))))
            (diag-potential-tags value attrib-map full-series-size))))
+
+(defn prefer-keyword
+  [s prefer-keyword other-keyword]
+  (if (and (contains? s prefer-keyword) (contains? s other-keyword))
+    (disj s other-keyword)
+    s))
 
 (defn diag-all-values
   "Create or update (in the subsequent calls) the attrib-map containing the
@@ -98,14 +105,19 @@
   ([coll] (diag-all-values coll {} (count coll)))
   ([coll attrib-map full-size]
    (if (empty? coll)
-     ;; FIXME: prefer integers to floats which also capture them in diag
-     (set
-       (filter keyword?
-               (map (fn [[attr diag-info]] (when (and
-                                                   (number? diag-info)
-                                                   (enough? diag-info full-size))
-                                             attr))
-                    attrib-map)))
+     ;; The coll has been exhausted, decide on the attributes to leave.
+     (reduce
+       (fn [attrs pref-pair]
+         (apply prefer-keyword attrs pref-pair))
+       (set
+         (filter keyword?
+                 (map (fn [[attr diag-info]]
+                        (when (and (number? diag-info)
+                                   (enough? diag-info full-size))
+                          attr))
+                      attrib-map)))
+       [[:integer :float] [:integer-needs-conv :float-needs-conv]])
+     ;; Work on the remaining part of coll.
      (recur
        (rest coll)
        (condp apply [(first coll)]

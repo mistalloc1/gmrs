@@ -1,7 +1,9 @@
 (ns gmrs.governor-test
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
             [gmrs.command :as cmd :refer [*EnabledMills*]]
-            [gmrs.governor :refer :all]))
+            [gmrs.governor :refer :all])
+  (:import [java.time ZonedDateTime]))
 
 (def hotel-governor
   { :recs-amount 2
@@ -23,6 +25,23 @@
            :b [{:score 0.25 :option "go"} {:score 0.01 :option "stay"}]}
           1000))
       "high recommendation cost but after many pulls"))
+
+(deftest test-safe-parse
+  (is (= 10 (:priority (safe-parse #(Float/parseFloat %)))) "correct priority")
+  (testing "integers safe-parse"
+    (let [transf (safe-parse #(Integer/parseInt (str/trim %)))]
+      (is (= [1 2 3] ((:execute transf) ["1" "  2  " "3"]
+                      ((:prepare transf) ["1" "  2  " "3"]))))
+      (is (= [1 nil 3 nil 5] ((:execute transf) ["1" "invalid" "3" "bad" "5"]
+                              ((:prepare transf) ["1" "invalid" "3" "bad" "5"]))))
+      (is (nil? ((:execute transf) nil ((:prepare transf) nil))))))
+  (testing "Parsing datetime with invalid values returns nil for bad entries"
+    (let [transf (safe-parse #(ZonedDateTime/parse %))
+          mixed-dates ["2024-01-01T10:00:00Z" "invalid-date" "not-a-datetime"]
+          result ((:execute transf) mixed-dates ((:prepare transf) mixed-dates))]
+      (is (instance? ZonedDateTime (first result)))
+      (is (nil? (second result)))
+      (is (nil? (nth result 2))))))
 
 (def hotel-option-gives
   (map (fn [source] (fn [io-settings]

@@ -65,12 +65,23 @@
           :maybe-tags-map {"2004-11-13T00:00:00+00:00" 1}}
          (diag-string-and-update "2004-11-13T00:00:00+00:00" example-attrib-map 10))))
 
+(deftest test-prefer-keyword
+  (is #{:foo :baz}
+      (prefer-keyword #{:foo :bar :baz} :foo :bar))
+  (is #{:bar :baz}
+      (prefer-keyword #{:bar :baz} :foo :bar))
+  (is #{:foo :baz}
+      (prefer-keyword #{:foo :baz} :foo :bar)))
+
 (deftest test-diag-all-values
   (is (= #{:float}
          (diag-all-values [45.3 124.3 25643.43 3655.5 43245.4])))
   (is (= #{:float :str :float-needs-conv}
          (diag-all-values ["45.3" "124.3" "25643.43" "3655.5" "43245.4"])))
   (is (= #{:float :str :float-needs-conv}
-         (diag-all-values ["45.3 " "124.3 " "25643.43 " "3655.5 " "43245.4"]))))
+         (diag-all-values ["45.3 " "124.3 " "25643.43 " "3655.5 " "43245.4"])))
+  (is (= #{:integer :str :integer-needs-conv}
+         (diag-all-values [" 45.0 " "124.0 " "25643 " "3655.0 " "43245"]))
+      "prefer integer to float"))
 
 ; (run-tests 'gmrs.data-diag-test)

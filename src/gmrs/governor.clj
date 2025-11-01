@@ -1,5 +1,6 @@
 (ns gmrs.governor
   (:require [clojure.set :as set]
+            [clojure.string :as str]
             [gmrs.io.getters :refer [getter]]
             [gmrs.data-diag :refer [diag-all-values]]
             [gmrs.preprocess :as preproc]
@@ -44,16 +45,16 @@
 (defn safe-parse [parse-fn]
   (preproc/->PreprocessingTransform
     (fn [_] nil)
-    (fn [s _]
-      (when s (try
-                (parse-fn s)
-                (catch Exception _ nil))))
+    (fn [coll _]
+      (when coll
+        (map #(try (parse-fn %) (catch Exception _ nil))
+             coll)))
     10))
 
 (def DefaultProcessing
   { :tags preproc/MultihotFromTags
     :float-needs-conv (safe-parse #(Float/parseFloat %))
-    :integer-needs-conv (safe-parse #(Integer/parseInt %))
+    :integer-needs-conv (safe-parse #(Integer/parseInt (str/trim %)))
     :date-local-needs-conv (safe-parse #(java.time.LocalDate/parse %))
     :time-local-needs-conv (safe-parse #(java.time.LocalTime/parse %))
     :date-zoned-with-time-needs-conv (safe-parse #(java.time.ZonedDateTime/parse %))

@@ -113,6 +113,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   retag-with-preproc-transforms and execute-preprocessing-instructions, along
   with output of get-col-groups on the set-taggings."
   [tags-table set-taggings col-sets col-groups]
+          (println "TRANSF" tags-table)
   (reduce
     into {}
     (map
@@ -132,13 +133,27 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                      (-> group first :col-name))),
               sorted-tag-transforms
               (sort-by #(.priority %) > (filter some? tag-transforms))]
-          (println group-name sorted-tag-transforms)
           (when (some any? sorted-tag-transforms)
-            { group-name (apply
-                           comp
-                           (map prepared-transf
-                                sorted-tag-transforms
-                                (repeat cols-lumped))) })))
+            { group-name
+             (apply
+               comp
+               (map first
+                    (->
+                      (reductions
+                        (fn [acc-transf-and-cols-lumped transf]
+                          (let [cols (second acc-transf-and-cols-lumped),
+                                prep-transf ((.prepare transf) cols),
+                                transf-fun
+                                (fn [coll] ((.execute transf) coll prep-transf))]
+                            ;; Accumulate the function for later use and coll for
+                            ;; use for the subsequent transformations.
+                            (println "For next:" transf (transf-fun cols))
+                            [transf-fun (transf-fun cols)]))
+                        [nil cols-lumped]
+                        sorted-tag-transforms)
+                      rest
+                      ;; As the last funcs to comp will be executed first:
+                      reverse))) })))
       col-groups)))
 
 (defn retag-with-preproc-transforms
