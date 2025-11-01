@@ -34,7 +34,11 @@
                       ((:prepare transf) ["1" "  2  " "3"]))))
       (is (= [1 nil 3 nil 5] ((:execute transf) ["1" "invalid" "3" "bad" "5"]
                               ((:prepare transf) ["1" "invalid" "3" "bad" "5"]))))
-      (is (nil? ((:execute transf) nil ((:prepare transf) nil))))))
+      (is (nil? ((:execute transf) nil ((:prepare transf) nil)))))
+    (let [transf (safe-parse #(Integer/parseInt (str/trim %)) 0)]
+      (is (= [1 0 3 0 5] ((:execute transf) ["1" "invalid" "3" "bad" "5"]
+                              ((:prepare transf) ["1" "invalid" "3" "bad" "5"])))
+          "parse with default")))
   (testing "Parsing datetime with invalid values returns nil for bad entries"
     (let [transf (safe-parse #(ZonedDateTime/parse %))
           mixed-dates ["2024-01-01T10:00:00Z" "invalid-date" "not-a-datetime"]

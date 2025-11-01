@@ -15,7 +15,10 @@
 (defn enough? [num-score full-series-size]
   (> (* num-score 2) full-series-size))
 
-(defn tags-map-usable? [tags-map full-series-size]
+(defn tags-map-usable?
+  "In order for the variable to be usable as tags, the number of unique values
+  needs to be less than 2/3 of the whole sample series size."
+  [tags-map full-series-size]
   (< (* 3 (count tags-map))
      (* 2 full-series-size)))
 
@@ -116,7 +119,11 @@
                                    (enough? diag-info full-size))
                           attr))
                       attrib-map)))
-       [[:integer :float] [:integer-needs-conv :float-needs-conv]])
+       [[:integer :float] [:integer-needs-conv :float-needs-conv]
+        ;; NOTE: these are more risky - when less options are observed, like the
+        ;; number of episodes, 26, 52...
+        [:tags :integer] [:tags :integer-needs-conv]
+        [:tags :float] [:tags :float-needs-conv]])
      ;; Work on the remaining part of coll.
      (recur
        (rest coll)

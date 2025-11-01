@@ -31,18 +31,21 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   vectors to 0s and 1s. The col names are prefix+$tag."
   ([tags-column] (multihot-from-tags tags-column "proc-"))
   ([tags-column prefix]
+   (println "TGCOL" tags-column)
    (let [tag->cols (atom {})
          zeros (vec (repeat (count tags-column) 0.0))]
      (dorun (map-indexed
               (fn [row-idx row-val]
-                (run!
-                  (fn [tag-col-name]
-                    (when (not (@tag->cols tag-col-name))
-                      (swap! tag->cols assoc tag-col-name zeros))
-                    (swap! tag->cols
-                           update-in [tag-col-name]
-                           #(assoc % row-idx 1.0)))
-                  (set (map #(keyword (str prefix %)) (str/split row-val #"\|")))))
+                (when row-val
+                  (run!
+                    (fn [tag-col-name]
+                      (when (not (@tag->cols tag-col-name))
+                        (swap! tag->cols assoc tag-col-name zeros))
+                      (swap! tag->cols
+                             update-in [tag-col-name]
+                             #(assoc % row-idx 1.0)))
+                    (set (map #(keyword (str prefix %))
+                              (str/split row-val #"\|"))))))
               tags-column))
      @tag->cols)))
 
@@ -113,11 +116,12 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   retag-with-preproc-transforms and execute-preprocessing-instructions, along
   with output of get-col-groups on the set-taggings."
   [tags-table set-taggings col-sets col-groups]
-          (println "TRANSF" tags-table)
   (reduce
     into {}
     (map
       (fn [[group-name group]]
+        (println "----" group-name (get (nth set-taggings (-> group first :set-n))
+                     (-> group first :col-name)))
         (let [all-cols (map (fn [{:keys [col-name set-n]}]
                               (get (nth col-sets set-n)
                                    col-name))
@@ -147,7 +151,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                                 (fn [coll] ((.execute transf) coll prep-transf))]
                             ;; Accumulate the function for later use and coll for
                             ;; use for the subsequent transformations.
-                            (println "For next:" transf (transf-fun cols))
+                            #_(println "For next:" transf (transf-fun cols))
                             [transf-fun (transf-fun cols)]))
                         [nil cols-lumped]
                         sorted-tag-transforms)

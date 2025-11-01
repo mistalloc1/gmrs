@@ -95,8 +95,8 @@
       (cmd/new-governor! "anime-recs")
       (cmd/autogovern! "anime-recs")
       (cmd/force-mill! "anime-recs" :nearest-options)
-      (println "GOV")
-      (run! (fn [[key val]] (println key val))
+      #_(println "GOV")
+      #_(run! (fn [[key val]] (println key val))
             (cmd/peek-governor "anime-recs"))
       (cmd/recommend-to "anime-recs" nil nil example-cases))))
 
