@@ -50,7 +50,7 @@ enough so it can be used from outside of Clojure).
 - [x] sort out the basic dataframe and math dependencies we'll use (for now, see dev-intro)
 - [x] detect numbers and timestamps in governor, if provided as strings
 - [x] provide a wrapper performing conversions marked by the governor (func composition)
-- [ ] handle nils in preprocessing and/or existing mills
+- [x] handle nils in preprocessing and/or existing mills
 - [x] allow describing cases through their previous interacted options
 - [x] separate mills for nearest options from similar cases (if no interactions)
 - [ ] test the most basic "informed popularity" mill
