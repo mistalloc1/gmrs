@@ -100,4 +100,6 @@
             (cmd/peek-governor "anime-recs"))
       (cmd/recommend-to "anime-recs" nil nil example-cases))))
 
+; (add-tap (fn [inp] (when (= :diag-all-values (:place inp)) (println inp))))
+
 ; (run-test test-anid-loading)

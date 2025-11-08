@@ -118,7 +118,7 @@
               (filter (fn [inter] (get case-inters (inter-case inter)))
                       new-inters))]
         (tap> {:last-step last-step, :current-step :more-inters,
-               :new-data only-relevant-inters})
+               :new-data only-relevant-inters :place :nn-from-inters})
         (recur cases options (wrangle/stack inters
                                             only-relevant-inters)
                gettable-options (rest gettable-inters)
@@ -132,7 +132,7 @@
               (wrangle/cols-row-count options)))
       (let [more-opts (first gettable-options)]
         (tap> {:last-step last-step, :current-step :more-options,
-               :new-data more-opts})
+               :new-data more-opts :place :nn-from-inters})
         (recur cases (wrangle/stack options more-opts) inters
                (rest gettable-options) gettable-inters
                case-inters
@@ -166,7 +166,7 @@
                    case-recs (wrangle/options-to-cases-scoring-table
                                opt-recs case-opts)]
                (tap> {:last-step last-step, :current-step :more-recs,
-                      :new-data case-recs})
+                      :new-data case-recs :place :nn-from-inters})
                (with-meta
                  (merge recommendations case-recs)
                  { :cases (vec (set (into (:cases (meta recommendations))
@@ -176,7 +176,8 @@
                    :io-settings (:io-settings (meta options)) })))
 
       ;; Recommendations OK or a repeated step
-      :else (do (tap> {:last-step last-step, :current-step :return-recs*})
+      :else (do (tap> {:last-step last-step, :current-step :return-recs
+                        :place :nn-from-inters})
                 recs-excluding-existing-inters)))))
 
 (defn select-max [reference new-val]
@@ -220,7 +221,7 @@
               (wrangle/cols-row-count aux-cases)))
       (let [more-cases (first gettable-cases)]
         (tap> {:last-step last-step, :current-step :more-cases,
-               :new-data more-cases})
+               :new-data more-cases :place :nn-from-cases})
         (recur cases options inters
                (rest gettable-cases) gettable-options gettable-inters
                (wrangle/stack aux-cases more-cases) case-similarities
@@ -236,7 +237,7 @@
                         (dissoc cases case-id) (dissoc aux-cases case-id)
                         (case-id cases) (case-id aux-cases))]
         (tap> {:last-step last-step, :current-step :rank-cases,
-               :new-data more-sims})
+               :new-data more-sims :place :nn-from-cases})
         (recur cases options inters
                (rest gettable-cases) gettable-options gettable-inters
                aux-cases
@@ -263,7 +264,7 @@
       (let [new-inters (first gettable-inters),
             all-inters (wrangle/stack inters new-inters)]
         (tap> {:last-step last-step, :current-step :more-inters,
-               :new-data new-inters})
+               :new-data new-inters :place :nn-from-cases})
         (recur cases options all-inters
                gettable-cases gettable-options (rest gettable-inters)
                aux-cases case-similarities (map-case-inters cases all-inters)
@@ -303,7 +304,7 @@
                          :options (inter-option usable-inters)
                          :io-settings (:io-settings (meta cases)) })]
         (tap> {:last-step last-step, :current-step :more-recs,
-               :new-data new-recs})
+               :new-data new-recs :place :nn-from-cases})
         (recur cases options inters
                gettable-cases gettable-options gettable-inters
                aux-cases case-similarities case-inters
@@ -311,7 +312,8 @@
                new-recs))
 
       ;; Recommendations OK or a repeated step
-      :else (do (tap> {:last-step last-step, :current-step :return-recs*})
+      :else (do (tap> {:last-step last-step, :current-step :return-recs
+                       :place :nn-from-cases})
                 recs-excluding-existing-inters)))))
 
 (defn nearest-options-type-mill

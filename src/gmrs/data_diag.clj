@@ -19,8 +19,20 @@
   "In order for the variable to be usable as tags, the number of unique values
   needs to be less than 2/3 of the whole sample series size."
   [tags-map full-series-size]
-  (< (* 3 (count tags-map))
-     (* 2 full-series-size)))
+  (let [good? (< (* 3 (count tags-map))
+                 (* 2 full-series-size))]
+    (if good?
+      (do
+        (when (= 5 (count tags-map))
+          (tap> {:good-tags-count (count tags-map) :series-size full-series-size
+                 :some-tags (map pr-str (keys tags-map))
+                 :place :diag-all-values}))
+        true)
+      (do
+        (tap> {:bad-tags-count (count tags-map) :series-size full-series-size
+               :some-tags (map pr-str (take 5 (keys tags-map)))
+               :place :diag-all-values})
+        false))))
 
 (defn heuristic-is-datetime? [value]
   (let [dig-groups (re-seq #"\d+" value)]
@@ -105,25 +117,32 @@
 
   The attributes end up being added if the diag-info associated with them is
   high enough. If it is negative at any point, this means we give up on it."
-  ([coll] (diag-all-values coll {} (count coll)))
+  ([coll]
+   (let [size (count coll)]
+     (tap> {:coll (pr-str coll) :type (when (seq coll) (type (first coll)))
+                 :size size :place :diag-all-values})
+     (diag-all-values coll {} size)))
   ([coll attrib-map full-size]
    (if (empty? coll)
      ;; The coll has been exhausted, decide on the attributes to leave.
-     (reduce
-       (fn [attrs pref-pair]
-         (apply prefer-keyword attrs pref-pair))
-       (set
-         (filter keyword?
-                 (map (fn [[attr diag-info]]
-                        (when (and (number? diag-info)
-                                   (enough? diag-info full-size))
-                          attr))
-                      attrib-map)))
-       [[:integer :float] [:integer-needs-conv :float-needs-conv]
-        ;; NOTE: these are more risky - when less options are observed, like the
-        ;; number of episodes, 26, 52...
-        [:tags :integer] [:tags :integer-needs-conv]
-        [:tags :float] [:tags :float-needs-conv]])
+     (let [final-attrs
+           (reduce
+             (fn [attrs pref-pair]
+               (apply prefer-keyword attrs pref-pair))
+             (set
+               (filter keyword?
+                       (map (fn [[attr diag-info]]
+                              (when (and (number? diag-info)
+                                         (enough? diag-info full-size))
+                                attr))
+                            attrib-map)))
+             [[:integer :float] [:integer-needs-conv :float-needs-conv]
+              ;; NOTE: these are more risky - when less options are observed,
+              ;; like the number of episodes, 26, 52...
+              [:tags :integer] [:tags :integer-needs-conv]
+              [:tags :float] [:tags :float-needs-conv]])]
+       (tap> {:attrs final-attrs :place :diag-all-values})
+       final-attrs)
      ;; Work on the remaining part of coll.
      (recur
        (rest coll)
