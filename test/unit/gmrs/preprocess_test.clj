@@ -139,7 +139,7 @@
   (let [tags-table { :upper ToUpper :append-count AppendInitialCount
                     :tags MultihotFromTags :number-scale ZLogisticScale }]
     (is (= ["3a" "3b" "3c"]
-           ((prepared-transf-for-tag tags-table ["a" "b" "c"] :append-count)
+           ((prepared-transf (get tags-table :append-count) ["a" "b" "c"])
             ["a" "b" "c"])))))
 
 (deftest test-get-groups-to-ready-transfs
@@ -175,7 +175,19 @@
         "the same scaling as expected is applied for :avg-price")
     (is (= ["11USA" "11USA" "11France" "11France" "11Sweden" "11Sweden"]
            ((:group-1 groups-to-transfs) (:country hotel-cases)))
-        "transform for :group-1 was prepared for the lumped column")))
+        "transform for :group-1 was prepared for the lumped column"))
+  (testing "tolerating preprocess failure"
+    ;; TODO: test for the tap
+    (let [groups-to-transfs
+          (get-groups-to-ready-transfs
+            { :upper ToUpper :append-count AppendInitialCount
+              :tags MultihotFromTags :number-scale ZLogisticScale }
+            [{ :name [:number-scale] }
+             { :avg-price [:tags] }]
+            [hotel-cases hotel-options]
+            (get-col-groups [{ :name [:number-scale] }
+                             { :avg-price [:tags] }]))]
+      (is (empty? (keys groups-to-transfs))))))
 
 (deftest test-retag-with-preproc-transforms
   (let [tags-and-transfs
@@ -272,9 +284,9 @@
         (retag-with-preproc-transforms
           (:tags-preprocessing hotel-governor)
           [{ :country #{:tags :str :group-123},
-            :avg-price #{:int :number-scale} }
+             :avg-price #{:int :number-scale} }
            { :country #{:tags :str :group-123},
-            :checkin-until #{:str :needs-conv :time-local} }]
+             :checkin-until #{:str :needs-conv :time-local} }]
           [hotel-cases hotel-options]),
         grouped-taggings (:set-taggings tags-and-transfs),
         grouped-tags-table (:tags-table tags-and-transfs),

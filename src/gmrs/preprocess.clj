@@ -59,8 +59,26 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
 ;; a start.
 (defrecord PreprocessingTransform [prepare execute priority])
 
+;; FIXME: taps here should be printed by default
+(defn report-transf-failure
+  [transf exception]
+  (tap> { :place :preprocess-execute
+          :reason :execution-error
+          :transf transf
+          :exception (pr-str exception) }))
+
+(defn get-safe-execute
+  "Wrap transformation execution so nil is returned on any exception."
+  [transf]
+  (fn [coll prepared]
+    (try ((.execute transf) coll prepared)
+         (catch Exception e
+           (do
+             (report-transf-failure transf e)
+             nil)))))
+
 (defn quick-transform [^PreprocessingTransform transf coll]
-  ((.execute transf)
+  ((get-safe-execute transf)
    coll
    ((.prepare transf) coll)))
 
@@ -114,13 +132,16 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   "Get a mapping of groups to functions combining all necessary preprocessing,
   already fitted to the data supplied in the col-sets. Args are similar to
   retag-with-preproc-transforms and execute-preprocessing-instructions, along
-  with output of get-col-groups on the set-taggings."
+  with output of get-col-groups on the set-taggings.
+
+  If a group cannot be preprocessed, it will be skipped in the output and a
+  warning may appear in tap> if this is due to a transformation error."
   [tags-table set-taggings col-sets col-groups]
   (reduce
     into {}
     (map
       (fn [[group-name group]]
-        (println "----" group-name (get (nth set-taggings (-> group first :set-n))
+        #_(println "----" group-name (get (nth set-taggings (-> group first :set-n))
                      (-> group first :col-name)))
         (let [all-cols (map (fn [{:keys [col-name set-n]}]
                               (get (nth col-sets set-n)
@@ -136,28 +157,43 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                 (get (nth set-taggings (-> group first :set-n))
                      (-> group first :col-name))),
               sorted-tag-transforms
-              (sort-by #(.priority %) > (filter some? tag-transforms))]
-          (when (some any? sorted-tag-transforms)
+              (sort-by #(.priority %) > (filter some? tag-transforms)),
+              accumulated-group-funs
+              (filter
+                some?
+                (map first
+                     ;; Here, we need to accumulate the prepared transformations
+                     ;; in the correct order and (for the accumulation) also
+                     ;; their results so the subsequent transfs can be prepared.
+                     ;; The transf is the first in acc, and the running result
+                     ;; second.
+                     (reductions
+                       (fn [acc-transf-and-cols-lumped transf]
+                         (let [cols (second acc-transf-and-cols-lumped),
+                               prep-transf (try
+                                             ((.prepare transf) cols)
+                                             (catch Exception e
+                                               (report-transf-failure transf e)
+                                               nil)),
+                               transf-fun
+                               (when prep-transf
+                                 (fn [coll] ((get-safe-execute transf)
+                                             coll prep-transf))),
+                               transf-coll (when transf-fun (transf-fun cols))]
+                           ;; Accumulate the function for later use and coll for
+                           ;; use for the subsequent transformations. Skip the
+                           ;; transfs that crash and return nil.
+                           (if transf-coll
+                             [transf-fun transf-coll]
+                             acc-transf-and-cols-lumped)))
+                       [nil cols-lumped]
+                       sorted-tag-transforms)))]
+          (when (some any? accumulated-group-funs)
             { group-name
-             (apply
-               comp
-               (map first
-                    (->
-                      (reductions
-                        (fn [acc-transf-and-cols-lumped transf]
-                          (let [cols (second acc-transf-and-cols-lumped),
-                                prep-transf ((.prepare transf) cols),
-                                transf-fun
-                                (fn [coll] ((.execute transf) coll prep-transf))]
-                            ;; Accumulate the function for later use and coll for
-                            ;; use for the subsequent transformations.
-                            #_(println "For next:" transf (transf-fun cols))
-                            [transf-fun (transf-fun cols)]))
-                        [nil cols-lumped]
-                        sorted-tag-transforms)
-                      rest
-                      ;; As the last funcs to comp will be executed first:
-                      reverse))) })))
+              (apply
+                comp
+                ;; As the last funcs to comp will be executed first:
+                (reverse accumulated-group-funs)) })))
       col-groups)))
 
 (defn retag-with-preproc-transforms
@@ -210,6 +246,9 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   can return either the resulting vector, or a map of :proc-X -> vector, which
   will then all be renamed to :col-name-X in the final col-sets.
 
+  If a group cannot be preprocessed, it will be skipped in the output and a
+  warning may appear in tap> if this is due to a transformation error.
+
   The metadata of original col-sets will be preserved."
   [tags-table set-taggings col-sets]
   (letfn [(unroll-col-group [accum-col-sets group-col-entries]
@@ -252,7 +291,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                               (fn [coll transf] (if transf (transf coll)
                                                   nil))
                               cols-lumped
-                              ;; Get tags them and make them into a
+                              ;; Get tags and make them into a
                               ;; transformations list.
                               (longer
                                 (list nil)
