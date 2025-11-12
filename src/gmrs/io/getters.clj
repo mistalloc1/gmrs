@@ -8,28 +8,30 @@
 
 (defn pages
   "Lazy sequence of concatenated subsequent pages of each give."
-  [io-settings gives]
+  [io-settings gives cols-subset]
   (lazy-seq (cons
               (with-meta
-                (wrangle/records-as-cols (apply concat (map first gives)))
+                ((if cols-subset #(select-keys % cols-subset) identity)
+                 (wrangle/records-as-cols (apply concat (map first gives))))
                 {:io-settings io-settings})
-              (pages io-settings (map rest gives)))))
+              (pages io-settings (map rest gives) cols-subset))))
 
 (defn getter
-  [io-settings gives]
+  ([io-settings gives] (getter io-settings gives nil))
+  ([io-settings gives cols-subset]
   (let [realized-gives (map #(apply % [io-settings])
                             gives)]
-    (pages io-settings realized-gives)))
+    (pages io-settings realized-gives cols-subset))))
 
 (defn get-options
   "Lazy sequence of option pages (combining a page from each give)."
   [io-settings io-setup]
-  (getter io-settings (:option-gives io-setup)))
+  (getter io-settings (:option-gives io-setup) (:option-columns io-settings)))
 
 (defn get-cases
   "Lazy sequence of case pages (combining a page from each give)."
   [io-settings io-setup]
-  (getter io-settings (:case-gives io-setup)))
+  (getter io-settings (:case-gives io-setup) (:case-columns io-settings)))
 
 (defn get-inters
   "Lazy sequence of interaction pages (combining a page from each give)."

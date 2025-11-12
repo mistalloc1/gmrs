@@ -112,7 +112,9 @@
   ([govern-name cases-filter options-filter cases]
    ; TODO: actually apply cases-filter and options-filter, some filters
    ; guidance should come from the guvna/mil
-   (let [cases (wrangle/records-as-cols cases), ; adapt from the input form
+   (let [cases (with-meta
+                 (wrangle/records-as-cols cases)
+                 { :io-settings *GlobalIOSettings* }), ; adapt from the input form
          gov (get/get-governor *GlobalIOSettings*
                                *GlobalIOSetup*
                                govern-name)
@@ -149,11 +151,12 @@
            ;; preprocess the already gotten data as the starts. wrap
            ;; the getters for more; nothing below will ever see the raw
            ;; data
-           (let [prepr (preprocess-exec set-taggings [cases raw-options-sample])]
-             [(prepr-with-ids (nth prepr 0)
+           (let [prepr-cases-and-opts
+                 (preprocess-exec set-taggings [cases raw-options-sample])]
+             [(prepr-with-ids (nth prepr-cases-and-opts 0)
                               (*GlobalIOSettings* :case-id)
                               cases)
-              (prepr-with-ids (nth prepr 1)
+              (prepr-with-ids (nth prepr-cases-and-opts 1)
                               (*GlobalIOSettings* :option-id)
                               raw-options-sample)
               raw-inters-sample])

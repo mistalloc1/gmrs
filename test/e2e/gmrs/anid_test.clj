@@ -61,45 +61,57 @@
     :Episodes-Watched 55968.0}
    ])
 
+(defn prepared-io-setup-selection []
+  (let [setup (atom (bs/toy-temp-baseless-io-setup))]
+    (swap! setup
+           update-in
+           [:option-gives]
+           conj (csv/csv-give "dev/anid/anime-filtered.csv"))
+    (swap! setup
+           update-in
+           [:case-gives]
+           conj (csv/csv-give "dev/anid/users-details-2023.csv"))
+    (swap! setup
+           update-in
+           [:inter-gives]
+           conj (csv/csv-give "dev/anid/user-filtered.csv" false :inter-id))
+    @setup))
+
 (deftest test-anid-loading
-  (binding [cmd/*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
+  (binding [cmd/*GlobalIOSetup* (prepared-io-setup-selection),
             cmd/*GlobalIOSettings*
             (assoc (bs/toy-temp-baseless-io-settings)
                    :option-id :anime_id
-                   :case-id :Mal-ID)]
-    (with-open [anime-reader (io/reader "dev/anid/anime-filtered.csv"),
-                user-reader (io/reader "dev/anid/users-details-2023.csv")
-                watched-reader (io/reader "dev/anid/user-filtered.csv")]
-      (set! cmd/*GlobalIOSetup*
-            (update-in cmd/*GlobalIOSetup*
-                       [:option-gives]
-                       conj (csv/csv-give anime-reader)))
-      (set! cmd/*GlobalIOSetup*
-            (update-in cmd/*GlobalIOSetup*
-                       [:case-gives]
-                       conj (csv/csv-give user-reader)))
-      (set! cmd/*GlobalIOSetup*
-            (update-in cmd/*GlobalIOSetup*
-                       [:inter-gives]
-                       conj (csv/csv-give watched-reader false :inter-id)))
+                   :case-id :Mal-ID
+                   :option-columns #{:anime_id :Name :Score :Genres
+                                     :Episodes :Producers}
+                   :case-columns #{:Mal-ID})]
       (let [options (first (get/get-options cmd/*GlobalIOSettings*
                                             cmd/*GlobalIOSetup*))]
         ; We expect the columnar format.
-        (is (= 25 (count (keys options))))
-        (is (= 32 (wrangle/cols-row-count options))))
-      (cmd/set-db-settings! :option-id :anime_id
-                            :case-id :Mal-ID
-                            :inter-id :inter-id
-                            :inter-case :user_id
-                            :inter-option :anime_id)
-      (cmd/new-governor! "anime-recs")
-      (cmd/autogovern! "anime-recs")
-      (cmd/force-mill! "anime-recs" :nearest-options)
-      #_(println "GOV")
-      #_(run! (fn [[key val]] (println key val))
-            (cmd/peek-governor "anime-recs"))
-      (cmd/recommend-to "anime-recs" nil nil example-cases))))
+        (is (= 6 (count (keys options))))
+        (is (= 32 (wrangle/cols-row-count options))))))
 
-; (add-tap (fn [inp] (when (= :diag-all-values (:place inp)) (println inp))))
+(deftest test-anid-recommend-to-some-features
+  (binding [cmd/*GlobalIOSetup* (prepared-io-setup-selection),
+            cmd/*GlobalIOSettings* (bs/toy-temp-baseless-io-settings)]
+    (cmd/set-db-settings! :option-id :anime_id
+                          :case-id :Mal-ID
+                          :inter-id :inter-id
+                          :inter-case :user_id
+                          :inter-option :anime_id
+                          :option-columns #{:anime_id :Name :Score :Genres
+                                            :Episodes :Producers}
+                          :case-columns #{:Mal-ID})
+    (cmd/new-governor! "anime-recs")
+    (cmd/autogovern! "anime-recs")
+    (cmd/force-mill! "anime-recs" :nearest-options)
+    (cmd/recommend-to "anime-recs" nil nil example-cases)))
+
+(run-test test-anid-recommend-to-some-features)
+
+#_(add-tap (fn [inp] (when (some #{(:place inp)}
+                                  [:groups-to-ready-transfs])
+                       (println inp))))
 
 ; (run-test test-anid-loading)

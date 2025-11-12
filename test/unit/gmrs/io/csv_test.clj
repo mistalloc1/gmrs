@@ -9,22 +9,19 @@
    {:name "Ernesto" :city "La Coruña" :age "25"}])
 
 (deftest test-csv-give
-  (with-open [reader (io/reader "test/_res/example.csv")]
-    (let [give ((csv-give reader true nil) {:page-size 10})]
-      (is (= expected-example
-             (first give))
-          "reading contents from a CSV file")))
-  (with-open [reader (io/reader "test/_res/example.csv")]
-    (let [give ((csv-give reader) {:page-size 10})]
-      (is (= expected-example
-             (first give))
-          "default wrap? arg value")))
-  (with-open [reader (io/reader "test/_res/example.csv")]
-    (let [give ((csv-give reader true :id) {:page-size 10})
-          first-page (first give)]
-      (is (every? #(contains? % :id) first-page)
-          "ident-column? adds ID column")
-      (is (= (range 2 (+ 2 (count first-page)))
-             (map :id first-page))
-          "ident-column? generates consecutive numbers"))))
+  (let [give ((csv-give  "test/_res/example.csv" true nil) {:page-size 10})]
+    (is (= expected-example
+           (first give))
+        "reading contents from a CSV file"))
+  (let [give ((csv-give  "test/_res/example.csv") {:page-size 10})]
+    (is (= expected-example
+           (first give))
+        "default wrap? arg value"))
+  (let [give ((csv-give  "test/_res/example.csv" true :id) {:page-size 10})
+        first-page (first give)]
+    (is (every? #(contains? % :id) first-page)
+        "ident-column? adds ID column")
+    (is (= (range 2 (+ 2 (count first-page)))
+           (map :id first-page))
+        "ident-column? generates consecutive numbers")))
 ; (run-tests 'gmrs.io.csv-test)

@@ -154,6 +154,7 @@
     (is (= {:animals :many} (meta (stack data1 data2))))
     (is (= data4 (stack data1 data2 data2)))
     (is (= {:animals :many} (meta (stack data1 data2 data2))))
+    (is (= {:animals :many} (meta (stack {} data1))))
     (is (= data1 (stack data1 {})))
     (is (= data1 (stack {} data1 )))))
 
