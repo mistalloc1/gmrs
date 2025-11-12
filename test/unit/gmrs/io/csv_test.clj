@@ -9,19 +9,20 @@
    {:name "Ernesto" :city "La Coruña" :age "25"}])
 
 (deftest test-csv-give
-  (let [give ((csv-give  "test/_res/example.csv" true nil) {:page-size 10})]
+  (let [give ((csv-give  "test/_res/example.csv" nil) {:page-size 3})]
     (is (= expected-example
            (first give))
         "reading contents from a CSV file"))
-  (let [give ((csv-give  "test/_res/example.csv") {:page-size 10})]
-    (is (= expected-example
-           (first give))
-        "default wrap? arg value"))
-  (let [give ((csv-give  "test/_res/example.csv" true :id) {:page-size 10})
+  (let [give ((csv-give  "test/_res/example.csv" :id) {:page-size 3})
         first-page (first give)]
     (is (every? #(contains? % :id) first-page)
         "ident-column? adds ID column")
-    (is (= (range 2 (+ 2 (count first-page)))
+    (is (= (range 1 (+ 1 (count first-page)))
            (map :id first-page))
-        "ident-column? generates consecutive numbers")))
+        "ident-column? generates consecutive numbers"))
+  (testing "getting over 20 pages"
+    (let [give ((csv-give  "test/_res/example.csv" :id) {:page-size 3})
+          page-21 (nth give 20)]
+      (is (= "Ines" (:name (last page-21))))
+      (is (= 63 (:id (last page-21)))))))
 ; (run-tests 'gmrs.io.csv-test)

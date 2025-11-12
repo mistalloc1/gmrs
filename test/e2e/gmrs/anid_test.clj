@@ -74,7 +74,7 @@
     (swap! setup
            update-in
            [:inter-gives]
-           conj (csv/csv-give "dev/anid/user-filtered.csv" false :inter-id))
+           conj (csv/csv-give "dev/anid/user-filtered.csv" :inter-id))
     @setup))
 
 (deftest test-anid-loading
@@ -108,10 +108,11 @@
     (cmd/force-mill! "anime-recs" :nearest-options)
     (cmd/recommend-to "anime-recs" nil nil example-cases)))
 
-(run-test test-anid-recommend-to-some-features)
+;(run-test test-anid-recommend-to-some-features)
 
 #_(add-tap (fn [inp] (when (some #{(:place inp)}
-                                  [:groups-to-ready-transfs])
+                                  ;[:groups-to-ready-transfs])
+                                  [:nn-from-inters :nn-from-cases])
                        (println inp))))
 
 ; (run-test test-anid-loading)

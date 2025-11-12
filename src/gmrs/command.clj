@@ -27,7 +27,8 @@
   { :target-top-heavy gv/target-top-heavy-pull-strategy })
 
 (defn set-db-settings! [& specs]
-  (apply assoc *GlobalIOSettings* specs))
+  (set! *GlobalIOSettings*
+        (apply assoc *GlobalIOSettings* specs)))
 
 (defn new-governor! [govern-name]
   (run! (fn [send-fun]
