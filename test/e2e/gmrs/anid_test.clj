@@ -106,7 +106,12 @@
     (cmd/new-governor! "anime-recs")
     (cmd/autogovern! "anime-recs")
     (cmd/force-mill! "anime-recs" :nearest-options)
-    (cmd/recommend-to "anime-recs" nil nil example-cases)))
+    (let [recs (cmd/recommend-to "anime-recs" nil nil example-cases)]
+     (println recs)
+      (is (= #{222 224 228} (set (keys recs)))
+          "recommendations keyed by cases")
+      (is (= 5 (count (get recs 222)))
+          "recs gotten, guvna recs-amount observed"))))
 
 ;(run-test test-anid-recommend-to-some-features)
 

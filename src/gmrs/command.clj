@@ -16,12 +16,12 @@
 
 (def ^:dynamic *EnabledMills*
   { :informed-popularity informed-popularity-recommend
-    :nearest-options nearest-options-type-mill})
+    :nearest-options nearest-options-type-mill })
 
 (def ^:dynamic *MillAcceptedColumnAttrs*
   { :informed-popularity #{}
     :nearest-options #{:integer :integer-needs-conv :float :float-needs-conv
-                       :tags}})
+                       :tags} })
 
 (def ^:dynamic *EnabledPullStrategies*
   { :target-top-heavy gv/target-top-heavy-pull-strategy })

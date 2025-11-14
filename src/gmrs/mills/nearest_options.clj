@@ -13,6 +13,10 @@
   "Return a scoring table. It needs to be supplied useful col sets for both
   cases and options, and the separate vectors (columns) of their ids."
   [cases options case-ids option-ids]
+  ;(println "CS" (keys cases))
+  ;(println "CSI" case-ids)
+  ;(println "OP" (keys options))
+  ;(println "OPI" option-ids)
   (assert (= (wrangle/cols-row-count cases) (count case-ids)))
   (assert (= (wrangle/cols-row-count options) (count option-ids)))
   (let [option-row-vecs (wrangle/cols-as-row-vecs options)]
@@ -36,6 +40,8 @@
         :io-settings (:io-settings (meta cases)) })))
 
 (defn interacted-cases-mask
+  "Get a boolean mask of case IDs indicating whether they appear in the
+  interactions."
   [cases inters]
   (let [io-settings (:io-settings (meta cases))]
     (map (set ((:inter-case io-settings) inters))
@@ -76,11 +82,13 @@
   ; TODO:when do we want to retake more interactions?
   ([cases options inters gettable-cases gettable-options gettable-inters
     partial-pull-strat]
-   (nearest-options-from-interactions-mill
-     cases options inters ; FIXME: only relevant inters...
-     gettable-options gettable-inters
-     (map-case-inters cases inters)
-     partial-pull-strat 1 nil
+   (if (pos? (wrangle/cols-row-count cases))
+     (nearest-options-from-interactions-mill
+       cases options inters ; FIXME: only relevant inters...
+       gettable-options gettable-inters
+       (map-case-inters cases inters)
+       partial-pull-strat 1 nil
+       {})
      {}))
   ([cases options inters
     gettable-options gettable-inters
@@ -190,12 +198,14 @@
   Case-similarities is a scoring table comparing target cases to aux-cases."
   ([cases options inters gettable-cases gettable-options gettable-inters
     partial-pull-strat]
-   (nearest-options-from-cases-mill
-     cases options inters
-     gettable-cases gettable-options gettable-inters
-     [] {}
-     (map-case-inters cases inters)
-     partial-pull-strat 1 nil
+   (if (pos? (wrangle/cols-row-count cases))
+     (nearest-options-from-cases-mill
+       cases options inters
+       gettable-cases gettable-options gettable-inters
+       {} {}
+       (map-case-inters cases inters)
+       partial-pull-strat 1 nil
+       {})
      {}))
    ([cases options inters
      gettable-cases gettable-options gettable-inters
