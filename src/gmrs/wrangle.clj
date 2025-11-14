@@ -122,7 +122,6 @@ as it cares about the meaning of the data, it should go into preprocess."
             first-stacked
             (recur first-stacked (rest added))))))
 
-
 ; TODO: we could detect calls on data which already columnar
 (defn records-as-cols
   "Get data from records in a columnar format. Missing values will be nils. The
@@ -136,16 +135,16 @@ as it cares about the meaning of the data, it should go into preprocess."
   ([records existing-cols col-length metadata]
    (if (empty? records)
      (with-meta existing-cols metadata)
-     (let [rec (first records),
+     (let [record (first records)
            new-cols
            (reduce into
                    (map
                      (fn [field-name]
                        { field-name
-                        (conj (or (existing-cols field-name)
-                                  (vec (repeat col-length nil)))
-                              (rec field-name)) })
-                     (keys rec))),
+                         (conj (or (existing-cols field-name)
+                                   (vec (repeat col-length nil)))
+                               (record field-name)) })
+                     (keys record))),
            missing-value-cols
            (reduce into
                    (concat [{}] ; ensure we get a map from no cols

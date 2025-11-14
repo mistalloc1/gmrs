@@ -42,6 +42,10 @@
       :coolness-rating 60
       :city "gdańsk"}]))
 
+(deftest test-get-multihot-values
+  (is (= #{:jazz :rock :dub :rap}
+         (get-multihot-values (example-cases :genres)))))
+
 (deftest test-multihot-from-tags
   (is (= {:proc-dub [1.0 0.0 0.0],
           :proc-jazz [1.0 0.0 1.0],
@@ -53,8 +57,25 @@
           :genre/jazz [1.0 0.0 1.0],
           :genre/rock [0.0 1.0 0.0],
           :genre/rap [0.0 0.0 1.0]}
-         (multihot-from-tags (example-cases :genres) "genre/"))
-      "custom prefix"))
+         (multihot-from-tags (example-cases :genres) nil "genre/"))
+      "custom prefix")
+  (is (= {:genre/punk [0.0 0.0 0.0],
+          :genre/rock [0.0 1.0 0.0],
+          :genre/rap [0.0 0.0 1.0]}
+         (multihot-from-tags (example-cases :genres)
+                             #{:rock :rap :punk}
+                             "genre/"))
+      "using a predetermined values-set"))
+
+(deftest test-MultihotFromTags
+  (let [prep ((.prepare MultihotFromTags)
+              (:genres
+                (wrangle/cols-from-row-mask example-cases [true true false])))]
+    ;; rap will be skipped because it wasn't seen
+    (is (= {:proc-dub [1.0 0.0 0.0],
+            :proc-jazz [1.0 0.0 1.0],
+            :proc-rock [0.0 1.0 0.0]}
+           ((.execute MultihotFromTags) (example-cases :genres) prep)))))
 
 (def hotel-governor
   { :recs-amount 2

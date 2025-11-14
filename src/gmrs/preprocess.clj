@@ -25,27 +25,51 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   (assert (:sd transf))
   (math/z-logistic-scale coll (:mean transf) (:sd transf)))
 
+(defn split-tags-str [tags-str]
+  (str/split tags-str #"\|"))
+
+(defn get-multihot-values
+  "Get a set of column values that can be used for future preprocessing; so all
+  these and only these will be present after calling multihot-from-tags with
+  this set."
+  [tags-column]
+  (reduce into #{} (map (fn [value] (map keyword (split-tags-str value)))
+                        tags-column)))
+
 ; TODO: profile against a cleaner impl (this is the oldest code in the project)
 (defn multihot-from-tags
   "Given a column of tags separated by pipes, return a mapping of columns to
-  vectors to 0s and 1s. The col names are prefix+$tag."
-  ([tags-column] (multihot-from-tags tags-column "proc-"))
-  ([tags-column prefix]
-   (println "TGCOL" tags-column)
-   (let [tag->cols (atom {})
-         zeros (vec (repeat (count tags-column) 0.0))]
+  vectors to 0s and 1s. The col names are prefix+$tag. You can supply values-set
+  so all and only these will be processed from the column."
+  ([tags-column] (multihot-from-tags tags-column nil "proc-"))
+  ([tags-column values-set] (multihot-from-tags tags-column values-set "proc-"))
+  ([tags-column values-set prefix]
+   (let [zeros (vec (repeat (count tags-column) 0.0)),
+         tag->cols (atom (if values-set
+                           (reduce into {}
+                                   (map
+                                     (fn [value] { (keyword (str prefix
+                                                                (name value)))
+                                                   zeros })
+                                     values-set))
+                           ;; init with empty if no values-set
+                           {}))]
      (dorun (map-indexed
               (fn [row-idx row-val]
                 (when row-val
                   (run!
                     (fn [tag-col-name]
-                      (when (not (@tag->cols tag-col-name))
+                      ;; Add a column in output, if we don't have the set
+                      ;; pre-determined.
+                      (when (and (not values-set)
+                                 (not (@tag->cols tag-col-name)))
                         (swap! tag->cols assoc tag-col-name zeros))
-                      (swap! tag->cols
-                             update-in [tag-col-name]
-                             #(assoc % row-idx 1.0)))
+                      (when (@tag->cols tag-col-name)
+                        (swap! tag->cols
+                               update-in [tag-col-name]
+                               #(assoc % row-idx 1.0))))
                     (set (map #(keyword (str prefix %))
-                              (str/split row-val #"\|"))))))
+                              (split-tags-str row-val))))))
               tags-column))
      @tag->cols)))
 
@@ -87,7 +111,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   (->PreprocessingTransform z-logistic-scale apply-z-logistic-scale 5))
 
 (def MultihotFromTags
-  (->PreprocessingTransform (fn [_] "proc-") multihot-from-tags 5))
+  (->PreprocessingTransform get-multihot-values multihot-from-tags 5))
 
 ;;;
 ;;; Applying transforms to column sets (i.e. maps).
@@ -180,6 +204,10 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                                  (fn [coll] ((get-safe-execute transf)
                                              coll prep-transf))),
                                transf-coll (when transf-fun (transf-fun cols))]
+                           (tap> {:place :groups-to-ready-transfs
+                                  :group-name group-name
+                                  :transf transf
+                                  :prepared-transf prep-transf})
                            ;; Accumulate the function for later use and coll for
                            ;; use for the subsequent transformations. Skip the
                            ;; transfs that crash and return nil.

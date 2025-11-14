@@ -65,6 +65,11 @@
                                :b ["X1" "X2" "X3" "X4" "X5"] }
                              [true false false true false]))
       "simple case")
+  (is (= {:a [] :b []}
+         (cols-from-row-mask { :a [1 2 3 4 5]
+                               :b ["X1" "X2" "X3" "X4" "X5"] }
+                             [false false false false false]))
+      "full false mask")
   (is (= {:john "lennon" :mary "stuart"}
          (meta
            (cols-from-row-mask (with-meta
