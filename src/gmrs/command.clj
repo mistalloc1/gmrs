@@ -97,11 +97,55 @@
 (defn peek-governor [govern-name]
   (get/get-governor *GlobalIOSettings* *GlobalIOSetup* govern-name))
 
-(defn prepr-with-ids
-  "Restore the ID column to the preprocessed version of the page."
-  [preprocessed id-col page]
-  (assoc (if (map? preprocessed) preprocessed (first preprocessed))
-         id-col (id-col page)))
+(defn restore-ids-to-feats
+  "Restore the ID column to the preprocessed version of the page (features-colset)."
+  [features-colset id-col page]
+  (println "REST" features-colset page)
+  (assoc features-colset id-col (id-col page)))
+
+(defn mill-args
+  "Prepare args to calling a mill from the target cases and getters.
+
+  Specifically, it's a sequence of preprocessed cases and options (sample),
+  a sample of inters, getters for more cases, opts, inters, and the partial
+  pull strategy curried with the governor."
+  [govern cases cases-getter options-getter inters-getter]
+  ;; TODO: what if the samples are not enough?
+  (let [accepted-col-attrs ((govern :mill) *MillAcceptedColumnAttrs*),
+        pull-strat ((govern :pull-strategy) *EnabledPullStrategies*),
+        raw-options-sample (first options-getter),
+        raw-inters-sample (first inters-getter),
+        tags-and-transfs (preproc/retag-with-preproc-transforms
+                           (select-keys (:tags-preprocessing govern)
+                                        accepted-col-attrs)
+                           (map govern [:case-columns :option-columns])
+                           [cases raw-options-sample])
+        set-taggings (:set-taggings tags-and-transfs),
+        preprocess-exec (partial preproc/execute-preprocessing-instructions
+                                 (:tags-table tags-and-transfs))]
+    (concat
+      ;; preprocess the already gotten data as the starts. wrap
+      ;; the getters for more; nothing below will ever see the raw
+      ;; data
+      (let [prepr-cases-and-opts
+            (preprocess-exec set-taggings [cases raw-options-sample])]
+        [(restore-ids-to-feats (nth prepr-cases-and-opts 0)
+                               (*GlobalIOSettings* :case-id)
+                               cases)
+         (restore-ids-to-feats (nth prepr-cases-and-opts 1)
+                               (*GlobalIOSettings* :option-id)
+                               raw-options-sample)
+         raw-inters-sample])
+      [(map #(restore-ids-to-feats
+               (first (preprocess-exec (take 1 set-taggings) [%]))
+               (*GlobalIOSettings* :case-id) %)
+            cases-getter)
+       (map #(restore-ids-to-feats
+               (first (preprocess-exec (take 1 (drop 1 set-taggings)) [%]))
+               (*GlobalIOSettings* :option-id) %)
+            (rest options-getter))
+       (rest inters-getter)
+       (partial pull-strat govern)])))
 
 (defn recommend-to
   ([govern-name cases-filter options-filter]
@@ -120,25 +164,12 @@
                                *GlobalIOSetup*
                                govern-name)
          mill ((gov :mill) *EnabledMills*),
-         accepted-col-attrs ((gov :mill) *MillAcceptedColumnAttrs*),
-         pull-strat ((gov :pull-strategy) *EnabledPullStrategies*),
          cases-getter (get/get-cases *GlobalIOSettings*
                                      *GlobalIOSetup*),
          options-getter (get/get-options *GlobalIOSettings*
                                          *GlobalIOSetup*),
          inters-getter (get/get-inters *GlobalIOSettings*
-                                       *GlobalIOSetup*),
-         ;; TODO: what if the samples are not enough?
-         raw-options-sample (first options-getter),
-         raw-inters-sample (first inters-getter),
-         tags-and-transfs (preproc/retag-with-preproc-transforms
-                            (select-keys (:tags-preprocessing gov)
-                                         accepted-col-attrs)
-                            (map gov [:case-columns :option-columns])
-                            [cases raw-options-sample])
-         set-taggings (:set-taggings tags-and-transfs),
-         preprocess-exec (partial preproc/execute-preprocessing-instructions
-                                  (:tags-table tags-and-transfs))]
+                                       *GlobalIOSetup*),]
      (assert (:mill gov))
      (assert (:tags-preprocessing gov))
      ;; TODO:require at least some of :case-columns etc. to be present
@@ -146,31 +177,8 @@
        (fn [recs-map case-id case-recs]
          (assoc recs-map case-id (take (gov :recs-amount) case-recs)))
        {}
-       (apply
-         mill
-         (concat
-           ;; preprocess the already gotten data as the starts. wrap
-           ;; the getters for more; nothing below will ever see the raw
-           ;; data
-           (let [prepr-cases-and-opts
-                 (preprocess-exec set-taggings [cases raw-options-sample])]
-             [(prepr-with-ids (nth prepr-cases-and-opts 0)
-                              (*GlobalIOSettings* :case-id)
-                              cases)
-              (prepr-with-ids (nth prepr-cases-and-opts 1)
-                              (*GlobalIOSettings* :option-id)
-                              raw-options-sample)
-              raw-inters-sample])
-           [(map #(prepr-with-ids
-                    (preprocess-exec (take 1 set-taggings) [%])
-                    (*GlobalIOSettings* :case-id) %)
-                 cases-getter)
-            (map #(prepr-with-ids
-                    (preprocess-exec (take 1 (drop 1 set-taggings)) [%])
-                    (*GlobalIOSettings* :option-id) %)
-                 (rest options-getter))
-            (rest inters-getter)
-            (partial pull-strat gov)]))))))
+       (apply mill
+              (mill-args gov cases cases-getter options-getter inters-getter))))))
 
 (defn -main [& args]
   (println "Running GMRS"))

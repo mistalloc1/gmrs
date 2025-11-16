@@ -94,6 +94,12 @@
                                                  *GlobalIOSetup*)))))
         "getting previously sent inters")))
 
+(deftest test-restore-ids-to-feats
+  (is (= {:a [45 45] :b [12 45] :id ["a" "b"]}
+         (restore-ids-to-feats {:a [45 45] :b [12 45]}
+                               :id
+                               {:a [0.45 0.45] :b [0.12 0.45] :id ["a" "b"]}))))
+
 (deftest test-integr-recommend-to
   (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
             *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)

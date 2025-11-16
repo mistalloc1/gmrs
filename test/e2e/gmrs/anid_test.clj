@@ -102,7 +102,8 @@
                           :inter-option :anime_id
                           :option-columns #{:anime_id :Name :Score :Genres
                                             :Episodes :Producers}
-                          :case-columns #{:Mal-ID})
+                          :case-columns #{:Mal-ID :Gender :Completed
+                                          :Location :Dropped})
     (cmd/new-governor! "anime-recs")
     (cmd/autogovern! "anime-recs")
     (cmd/force-mill! "anime-recs" :nearest-options)
@@ -116,8 +117,9 @@
 ;(run-test test-anid-recommend-to-some-features)
 
 #_(add-tap (fn [inp] (when (some #{(:place inp)}
-                                  ;[:groups-to-ready-transfs])
-                                  [:nn-from-inters :nn-from-cases])
+                                  [:preprocess-execute]
+                                  ;[:nn-from-inters :nn-from-cases]
+                                  )
                        (println inp))))
 
 ; (run-test test-anid-loading)
