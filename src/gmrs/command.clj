@@ -100,7 +100,6 @@
 (defn restore-ids-to-feats
   "Restore the ID column to the preprocessed version of the page (features-colset)."
   [features-colset id-col page]
-  (println "REST" features-colset page)
   (assoc features-colset id-col (id-col page)))
 
 (defn mill-args
@@ -113,13 +112,16 @@
   ;; TODO: what if the samples are not enough?
   (let [accepted-col-attrs ((govern :mill) *MillAcceptedColumnAttrs*),
         pull-strat ((govern :pull-strategy) *EnabledPullStrategies*),
+        case-id-col (*GlobalIOSettings* :case-id),
+        opt-id-col (*GlobalIOSettings* :option-id),
         raw-options-sample (first options-getter),
         raw-inters-sample (first inters-getter),
         tags-and-transfs (preproc/retag-with-preproc-transforms
                            (select-keys (:tags-preprocessing govern)
                                         accepted-col-attrs)
                            (map govern [:case-columns :option-columns])
-                           [cases raw-options-sample])
+                           [(dissoc cases case-id-col)
+                            (dissoc raw-options-sample opt-id-col)])
         set-taggings (:set-taggings tags-and-transfs),
         preprocess-exec (partial preproc/execute-preprocessing-instructions
                                  (:tags-table tags-and-transfs))]
@@ -130,19 +132,21 @@
       (let [prepr-cases-and-opts
             (preprocess-exec set-taggings [cases raw-options-sample])]
         [(restore-ids-to-feats (nth prepr-cases-and-opts 0)
-                               (*GlobalIOSettings* :case-id)
+                               case-id-col
                                cases)
          (restore-ids-to-feats (nth prepr-cases-and-opts 1)
-                               (*GlobalIOSettings* :option-id)
+                               opt-id-col
                                raw-options-sample)
          raw-inters-sample])
       [(map #(restore-ids-to-feats
-               (first (preprocess-exec (take 1 set-taggings) [%]))
-               (*GlobalIOSettings* :case-id) %)
+               (first (preprocess-exec (take 1 set-taggings)
+                                       [(dissoc % case-id-col)]))
+               case-id-col %)
             cases-getter)
        (map #(restore-ids-to-feats
-               (first (preprocess-exec (take 1 (drop 1 set-taggings)) [%]))
-               (*GlobalIOSettings* :option-id) %)
+               (first (preprocess-exec (take 1 (drop 1 set-taggings))
+                                       [(dissoc % opt-id-col)]))
+               case-id-col %)
             (rest options-getter))
        (rest inters-getter)
        (partial pull-strat govern)])))

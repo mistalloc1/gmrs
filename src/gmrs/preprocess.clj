@@ -6,11 +6,12 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
             [gmrs.math :as math]
             [gmrs.wrangle :as wrangle]))
 
+;; NOTE: If we don't debug, we try to ignore them.
+(def ^:dynamic *debug-preproc-exceptions* true)
+
 (defn longer [coll1 coll2]
   (if (> (count coll1) (count coll2))
     coll1 coll2))
-
-; TODO: currently none of this handles nulls
 
 (defn z-logistic-scale
   "Fit a numerical seq encoding. It first applies a Z-score scaling (by standard
@@ -83,6 +84,17 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
 ;; a start.
 (defrecord PreprocessingTransform [prepare execute priority])
 
+(defn safe-parse
+  ([parse-fn] (safe-parse parse-fn nil))
+  ([parse-fn default]
+   (->PreprocessingTransform
+     (fn [_] (str parse-fn ", default " default))
+     (fn [coll _]
+       (when coll
+         (map #(try (parse-fn %) (catch Exception _ default))
+              coll)))
+     10)))
+
 ;; FIXME: taps here should be printed by default
 (defn report-transf-failure
   [transf exception]
@@ -97,9 +109,11 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   (fn [coll prepared]
     (try ((.execute transf) coll prepared)
          (catch Exception e
-           (do
-             (report-transf-failure transf e)
-             nil)))))
+           (if *debug-preproc-exceptions*
+             (throw e)
+             (do
+               (report-transf-failure transf e)
+               nil))))))
 
 (defn quick-transform [^PreprocessingTransform transf coll]
   ((get-safe-execute transf)
@@ -165,8 +179,6 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
     into {}
     (map
       (fn [[group-name group]]
-        #_(println "----" group-name (get (nth set-taggings (-> group first :set-n))
-                     (-> group first :col-name)))
         (let [all-cols (map (fn [{:keys [col-name set-n]}]
                               (get (nth col-sets set-n)
                                    col-name))
@@ -193,6 +205,9 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                      ;; second.
                      (reductions
                        (fn [acc-transf-and-cols-lumped transf]
+                         (when *debug-preproc-exceptions*
+                           (println "Preprocessing" group-name "-"
+                                    (.execute transf)))
                          (let [cols (second acc-transf-and-cols-lumped),
                                prep-transf (try
                                              ((.prepare transf) cols)
@@ -200,9 +215,12 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                                                (report-transf-failure transf e)
                                                nil)),
                                transf-fun
-                               (when prep-transf
-                                 (fn [coll] ((get-safe-execute transf)
-                                             coll prep-transf))),
+                               (do
+                                 (when *debug-preproc-exceptions*
+                                   (println "Prepared:" prep-transf))
+                                 (when prep-transf
+                                   (fn [coll] ((get-safe-execute transf)
+                                               coll prep-transf)))),
                                transf-coll (when transf-fun (transf-fun cols))]
                            (tap> {:place :groups-to-ready-transfs
                                   :group-name group-name
@@ -316,7 +334,11 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                                            (rest starts-in-lump)),
                   cols-lumped (apply concat all-cols),
                   processed (reduce
-                              (fn [coll transf] (if transf (transf coll)
+                              (fn [coll transf]
+                                (when *debug-preproc-exceptions*
+                                  (println "Preprocessing" group-name
+                                           "-" transf))
+                                (if transf (transf coll)
                                                   nil))
                               cols-lumped
                               ;; Get tags and make them into a

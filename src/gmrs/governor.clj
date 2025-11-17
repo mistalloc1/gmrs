@@ -42,24 +42,14 @@
           cost-of-next-pull (* (:score-weakness-tolerance gov) step-number)]
       (> cost-of-recommendation cost-of-next-pull))))
 
-(defn safe-parse
-  ([parse-fn] (safe-parse parse-fn nil))
-  ([parse-fn default]
-   (preproc/->PreprocessingTransform
-     (fn [_] nil)
-     (fn [coll _]
-       (when coll
-         (map #(try (parse-fn %) (catch Exception _ default))
-              coll)))
-     10)))
-
 (def DefaultProcessing
   { :tags preproc/MultihotFromTags
-    :float-needs-conv (safe-parse #(Float/parseFloat %) 0.0)
-    :integer-needs-conv (safe-parse #(Integer/parseInt (str/trim %)) 0)
-    :date-local-needs-conv (safe-parse #(java.time.LocalDate/parse %))
-    :time-local-needs-conv (safe-parse #(java.time.LocalTime/parse %))
-    :date-zoned-with-time-needs-conv (safe-parse #(java.time.ZonedDateTime/parse %))
+    :float-needs-conv (preproc/safe-parse #(Float/parseFloat %) 0.0)
+    :integer-needs-conv (preproc/safe-parse #(Integer/parseInt (str/trim %)) 0)
+    :date-local-needs-conv (preproc/safe-parse #(java.time.LocalDate/parse %))
+    :time-local-needs-conv (preproc/safe-parse #(java.time.LocalTime/parse %))
+    :date-zoned-with-time-needs-conv (preproc/safe-parse
+                                       #(java.time.ZonedDateTime/parse %))
     :float preproc/ZLogisticScale
     :integer preproc/ZLogisticScale })
 

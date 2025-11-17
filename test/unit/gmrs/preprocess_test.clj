@@ -3,10 +3,31 @@
             [clojure.test :refer :all]
             [gmrs.preprocess :refer :all]
             [gmrs.wrangle :as wrangle])
-  (:import [gmrs.preprocess PreprocessingTransform]))
+  (:import [java.time ZonedDateTime]))
 
 (defn close? [tolerance x y]
   (< (Math/abs (double (- x y))) tolerance))
+
+(deftest test-safe-parse
+  (is (= 10 (:priority (safe-parse #(Float/parseFloat %)))) "correct priority")
+  (testing "integers safe-parse"
+    (let [transf (safe-parse #(Integer/parseInt (str/trim %)))]
+      (is (= [1 2 3] ((:execute transf) ["1" "  2  " "3"]
+                      ((:prepare transf) ["1" "  2  " "3"]))))
+      (is (= [1 nil 3 nil 5] ((:execute transf) ["1" "invalid" "3" "bad" "5"]
+                              ((:prepare transf) ["1" "invalid" "3" "bad" "5"]))))
+      (is (nil? ((:execute transf) nil ((:prepare transf) nil)))))
+    (let [transf (safe-parse #(Integer/parseInt (str/trim %)) 0)]
+      (is (= [1 0 3 0 5] ((:execute transf) ["1" "invalid" "3" "bad" "5"]
+                              ((:prepare transf) ["1" "invalid" "3" "bad" "5"])))
+          "parse with default")))
+  (testing "Parsing datetime with invalid values returns nil for bad entries"
+    (let [transf (safe-parse #(ZonedDateTime/parse %))
+          mixed-dates ["2024-01-01T10:00:00Z" "invalid-date" "not-a-datetime"]
+          result ((:execute transf) mixed-dates ((:prepare transf) mixed-dates))]
+      (is (instance? ZonedDateTime (first result)))
+      (is (nil? (second result)))
+      (is (nil? (nth result 2))))))
 
 (deftest test-z-logistic-scale
   (let [transf (z-logistic-scale [0 1 2 5])]
@@ -103,22 +124,22 @@
   (wrangle/records-as-cols
     [{:name "John Smith" :country "USA" :checkin-until "22:00"
       :avg-price 180 :amenities "pool|wifi|pet-friendly" :age 34
-      :travel-purpose "business"}
+      :travel-purpose "business" :pets-amount "0"}
      {:name "Sarah Johnson" :country "USA" :checkin-until "20:00"
       :avg-price 50 :amenities "wifi|electric-car-charging" :age 78
-      :travel-purpose "leisure"}
+      :travel-purpose "leisure" :pets-amount "3"}
      {:name "Pierre Dubois" :country "France" :checkin-until "23:00"
       :avg-price 120 :amenities "breakfast|wifi|bicycle-rental" :age 45
-      :travel-purpose "business"}
+      :travel-purpose "business" :pets-amount "1"}
      {:name "Marie Leroy" :country "France" :checkin-until "21:00"
       :avg-price 90 :amenities "wifi|kitchenette" :age 21
-      :travel-purpose "leisure"}
+      :travel-purpose "leisure" :pets-amount "2"}
      {:name "Erik Andersson" :country "Sweden" :checkin-until "24:00"
       :avg-price 160 :amenities "gym|wifi|airport-shuttle" :age 29
-      :travel-purpose "business"}
+      :travel-purpose "business" :pets-amount "0"}
      {:name "Anna Lindqvist" :country "Sweden" :checkin-until "22:00"
       :avg-price 140 :amenities "breakfast|pool|wifi|babysitting"
-      :age 38 :travel-purpose "leisure"}]))
+      :age 38 :travel-purpose "leisure" :pets-amount "1"}]))
 
 ;; Test PreprocessingTransforms.
 (defn append-init-count-prepare [coll]
@@ -208,7 +229,25 @@
             [hotel-cases hotel-options]
             (get-col-groups [{ :name [:number-scale] }
                              { :avg-price [:tags] }]))]
-      (is (empty? (keys groups-to-transfs))))))
+      (is (empty? (keys groups-to-transfs)))))
+  (testing "the correct preprocessing order according to priority"
+    (let [groups-to-transfs
+          (get-groups-to-ready-transfs
+            { :upper ToUpper :append-count AppendInitialCount
+              :integer-needs-conv (safe-parse #(Integer/parseInt
+                                                         (str/trim %))
+                                              0)
+              :tags MultihotFromTags :number-scale ZLogisticScale }
+            [{ :pets-amount [:integer-needs-conv :number-scale] }]
+            [hotel-cases]
+            (get-col-groups [{ :pets-amount [:integer-needs-conv
+                                             :number-scale] }]))]
+      (is (some? (get groups-to-transfs :ungroup:0:pets-amount)))
+      (is (= 2
+             (count
+               ((get groups-to-transfs :ungroup:0:pets-amount) ["5" "10"]))))
+      (is (every? (fn [value] (and (< 0.0 value) (> 1.0 value)))
+                  ((get groups-to-transfs :ungroup:0:pets-amount) ["5" "10"]))))))
 
 (deftest test-retag-with-preproc-transforms
   (let [tags-and-transfs
