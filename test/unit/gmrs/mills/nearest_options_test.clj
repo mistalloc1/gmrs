@@ -3,7 +3,7 @@
             [gmrs.mills.nearest-options :refer :all]
             [gmrs.preprocess :as preproc]
             [gmrs.wrangle :as wrangle]
-            [gmrs.command :refer [prepr-with-ids]]))
+            [gmrs.command :refer [restore-ids-to-feats]]))
 
 (defn close? [tolerance x y]
   (< (Math/abs (double (- x y))) tolerance))
@@ -257,7 +257,7 @@
 (defn make-getter [prepr-items orig-items-with-ids]
   (map (fn [row-page page-ids]
          (with-meta
-           (prepr-with-ids
+           (restore-ids-to-feats
              (wrangle/records-as-cols row-page)
              :name {:name page-ids})
            (meta orig-items-with-ids)))
@@ -274,12 +274,12 @@
                            :avg-price [:number-scale]}]
           [hotel-cases hotel-options]),
         cases (wrangle/cols-from-row-mask
-                (prepr-with-ids
+                (restore-ids-to-feats
                   (first cases-and-options)
                   :name hotel-cases)
                 ;; select only the ones to which we gave interactions
                 [false true false true true false]),
-        options (prepr-with-ids
+        options (restore-ids-to-feats
                   (second cases-and-options)
                   :name hotel-options),
         recs (nearest-options-from-interactions-mill
@@ -318,12 +318,12 @@
                                          :avg-price [:number-scale]}]
                         [hotel-options]),
         cases (wrangle/cols-from-row-mask
-                (prepr-with-ids
+                (restore-ids-to-feats
                   (first prepr-cases)
                   :name hotel-cases)
                 ;; Select John Smith, Marie Leroy and Anna Lindqvist
                 [true false false true false true]),
-        options (prepr-with-ids
+        options (restore-ids-to-feats
                   (first prepr-options)
                   :name hotel-options),
         recs (nearest-options-from-cases-mill

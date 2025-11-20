@@ -61,7 +61,7 @@
     :Episodes-Watched 55968.0}
    ])
 
-(defn prepared-io-setup-selection []
+(defn prepared-io-setup []
   (let [setup (atom (bs/toy-temp-baseless-io-setup))]
     (swap! setup
            update-in
@@ -78,7 +78,7 @@
     @setup))
 
 (deftest test-anid-loading
-  (binding [cmd/*GlobalIOSetup* (prepared-io-setup-selection),
+  (binding [cmd/*GlobalIOSetup* (prepared-io-setup),
             cmd/*GlobalIOSettings*
             (assoc (bs/toy-temp-baseless-io-settings)
                    :option-id :anime_id
@@ -93,7 +93,7 @@
         (is (= 32 (wrangle/cols-row-count options))))))
 
 (deftest test-anid-recommend-to-some-features
-  (binding [cmd/*GlobalIOSetup* (prepared-io-setup-selection),
+  (binding [cmd/*GlobalIOSetup* (prepared-io-setup),
             cmd/*GlobalIOSettings* (bs/toy-temp-baseless-io-settings)]
     (cmd/set-db-settings! :option-id :anime_id
                           :case-id :Mal-ID

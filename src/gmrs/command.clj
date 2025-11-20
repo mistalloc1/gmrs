@@ -79,9 +79,7 @@
                                      govern-name),
         new-govern (gv/autogovern old-govern
                                   *GlobalIOSettings*
-                                  (:option-gives *GlobalIOSetup*)
-                                  (:case-gives *GlobalIOSetup*)
-                                  (:inter-gives *GlobalIOSetup*))]
+                                  *GlobalIOSetup*)]
     (run! (fn [send-fun] (send-fun *GlobalIOSetup* govern-name
                                    new-govern))
           (:govern-sends *GlobalIOSetup*))))

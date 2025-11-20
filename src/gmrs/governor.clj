@@ -1,7 +1,7 @@
 (ns gmrs.governor
   (:require [clojure.set :as set]
             [clojure.string :as str]
-            [gmrs.io.getters :refer [getter]]
+            [gmrs.io.getters :as get]
             [gmrs.data-diag :refer [diag-all-values]]
             [gmrs.preprocess :as preproc]
             [gmrs.wrangle :as wrangle]))
@@ -64,8 +64,8 @@
   "Get diagnostics for columns that are supplied from a give functions.
 
   For possible column attributes see docs/column-attibutes.md."
-  [govern io-settings give-sources]
-  (let [sample (first (getter io-settings give-sources))]
+  [getter]
+  (let [sample (first getter)]
     (reduce into
             (map (fn [col-name col]
                    {col-name (diag-all-values col)})
@@ -74,14 +74,14 @@
 
 (defn update-columns-diagnostics
   "Add columns diagnostic info to the governor."
-  [old-govern io-settings option-gives case-gives inter-gives]
+  [old-govern io-settings io-setup]
   (merge old-govern
          {:option-columns (diagnose-columns-from-source
-                            old-govern io-settings option-gives),
+                            (get/get-options io-settings io-setup)),
           :case-columns (diagnose-columns-from-source
-                          old-govern io-settings case-gives),
+                          (get/get-cases io-settings io-setup)),
           :inter-columns (diagnose-columns-from-source
-                           old-govern io-settings inter-gives)}))
+                           (get/get-inters io-settings io-setup))}))
 
 (defn choose-and-prepare-mill
   [old-govern]
@@ -98,7 +98,6 @@
 
 (defn autogovern
   "Automatically try to select the mill and mark columns as features."
-  [old-govern io-settings option-gives case-gives inter-gives]
+  [old-govern io-settings io-setup]
   (choose-and-prepare-mill
-    (update-columns-diagnostics old-govern io-settings
-                                option-gives case-gives inter-gives)))
+    (update-columns-diagnostics old-govern io-settings io-setup)))

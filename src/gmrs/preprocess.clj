@@ -84,6 +84,13 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
 ;; a start.
 (defrecord PreprocessingTransform [prepare execute priority])
 
+; TODO: binning
+(def ZLogisticScale
+  (->PreprocessingTransform z-logistic-scale apply-z-logistic-scale 5))
+
+(def MultihotFromTags
+  (->PreprocessingTransform get-multihot-values multihot-from-tags 5))
+
 (defn safe-parse
   ([parse-fn] (safe-parse parse-fn nil))
   ([parse-fn default]
@@ -119,13 +126,6 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   ((get-safe-execute transf)
    coll
    ((.prepare transf) coll)))
-
-; TODO: binning
-(def ZLogisticScale
-  (->PreprocessingTransform z-logistic-scale apply-z-logistic-scale 5))
-
-(def MultihotFromTags
-  (->PreprocessingTransform get-multihot-values multihot-from-tags 5))
 
 ;;;
 ;;; Applying transforms to column sets (i.e. maps).
@@ -206,7 +206,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                      (reductions
                        (fn [acc-transf-and-cols-lumped transf]
                          (when *debug-preproc-exceptions*
-                           (println "Preprocessing" group-name "-"
+                           (println "Preprocessing" group-name "- transform:"
                                     (.execute transf)))
                          (let [cols (second acc-transf-and-cols-lumped),
                                prep-transf (try
@@ -217,7 +217,8 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                                transf-fun
                                (do
                                  (when *debug-preproc-exceptions*
-                                   (println "Prepared:" prep-transf))
+                                   (println "Prepared:" prep-transf
+                                            "from" (take 5 cols) "..."))
                                  (when prep-transf
                                    (fn [coll] ((get-safe-execute transf)
                                                coll prep-transf)))),
@@ -300,6 +301,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   (letfn [(unroll-col-group [accum-col-sets group-col-entries]
             (reduce
               (fn [group-col-sets {:keys [col-name set-n done]}]
+                (let [result
                 (if (map? done)
                   ;; The multi-column "proc-" case.
                   (let [final-col-names
@@ -312,13 +314,21 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                     (update group-col-sets set-n merge
                             (zipmap final-col-names (vals done))))
                   ;; The base one-vector result case.
-                  (assoc-in group-col-sets [set-n col-name] done)))
+                  (assoc-in group-col-sets [set-n col-name] done))]
+                  (println "Changed col sets:" result)
+                  result))
               accum-col-sets
               group-col-entries)),
           (unroll-col-groups [groups]
+            (println "Groups:" groups)
             (reduce unroll-col-group
-                    (mapv (fn [col-set] (with-meta {} (meta col-set))) col-sets)
+                    ;; prepare the initial recreated col-sets:
+                    (mapv (fn [col-set] (with-meta {} (meta col-set)))
+                          col-sets)
                     groups))]
+    ;; Here, the preprocessed data will be organized by the groups - allowing
+    ;; them to be processed together. The columns will be placed in the correct
+    ;; col-set in (unroll-col-group).
     (unroll-col-groups
       (filter
         some?
@@ -336,13 +346,14 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                   processed (reduce
                               (fn [coll transf]
                                 (when *debug-preproc-exceptions*
-                                  (println "Preprocessing" group-name
-                                           "-" transf))
-                                (if transf (transf coll)
-                                                  nil))
+                                  #_(println "Preprocessing" group-name
+                                           "- transform:" transf))
+                                ;; transform if there's a defined transf,
+                                ;; otherwise nil the col
+                                (if transf (transf coll) nil))
                               cols-lumped
                               ;; Get tags and make them into a
-                              ;; transformations list.
+                              ;; transformations list to be reduced.
                               (longer
                                 (list nil)
                                 (filter
@@ -355,6 +366,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                                                         transf)
                                              (partial quick-transform transf)
                                              :else transf)))
+                                       ;; get the tags for these columns
                                        ;; NOTE: tags must be the same for every
                                        ;; column! (that's why we can take the
                                        ;; first entry of the group)
@@ -364,8 +376,12 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
               (when processed
                 (map-indexed (fn [i entry]
                                (assoc entry :done
+                                      ;; to the group entry, add the :done part
+                                      ;; of the lumped column vector
                                       (apply wrangle/slice
                                              (into [processed]
                                                    (nth set-indices-in-lump i)))))
                              group))))
+          ;; "a map of group keys to group entries (which are maps of :col-name
+          ;; and :set-n)"
           (get-col-groups set-taggings))))))
