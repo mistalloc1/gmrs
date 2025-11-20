@@ -31,7 +31,9 @@
                                  {:row case-vec :cases cases})))
                  (map (fn [option-id option-vec]
                          { [case-id option-id]
-                           (math/pearson-correlation case-vec option-vec) })
+                           (let [score (math/pearson-correlation case-vec
+                                                                 option-vec)]
+                             (if (NaN? score) -1.0 score)) })
                        option-ids
                        option-row-vecs))
              case-ids
@@ -226,9 +228,12 @@
                     step-number)]
     (cond
       (and continue? (not= last-step :more-cases)
-           ;; More cases needed - either 0 or all used for recommendations
+           ;; More cases needed - either 0 or all used for ranking...
            (= (count (:options (meta case-similarities)))
-              (wrangle/cols-row-count aux-cases)))
+              (wrangle/cols-row-count aux-cases))
+           ;; ...and there is equal or more final recs than aux cases
+           (<= (count (:options (meta case-similarities)))
+               (count (:options (meta recommendations)))))
       (let [more-cases (first gettable-cases)]
         (tap> {:last-step last-step, :current-step :more-cases,
                :new-data more-cases :place :nn-from-cases})

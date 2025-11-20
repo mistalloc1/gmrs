@@ -108,7 +108,6 @@
     (cmd/autogovern! "anime-recs")
     (cmd/force-mill! "anime-recs" :nearest-options)
     (let [recs (cmd/recommend-to "anime-recs" nil nil example-cases)]
-     (println recs)
       (is (= #{222 224 228} (set (keys recs)))
           "recommendations keyed by cases")
       (is (= 5 (count (get recs 222)))

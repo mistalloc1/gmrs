@@ -315,12 +315,10 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                             (zipmap final-col-names (vals done))))
                   ;; The base one-vector result case.
                   (assoc-in group-col-sets [set-n col-name] done))]
-                  (println "Changed col sets:" result)
                   result))
               accum-col-sets
               group-col-entries)),
           (unroll-col-groups [groups]
-            (println "Groups:" groups)
             (reduce unroll-col-group
                     ;; prepare the initial recreated col-sets:
                     (mapv (fn [col-set] (with-meta {} (meta col-set)))
@@ -346,7 +344,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                   processed (reduce
                               (fn [coll transf]
                                 (when *debug-preproc-exceptions*
-                                  #_(println "Preprocessing" group-name
+                                  (println "Preprocessing" group-name
                                            "- transform:" transf))
                                 ;; transform if there's a defined transf,
                                 ;; otherwise nil the col

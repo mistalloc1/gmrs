@@ -19,6 +19,7 @@
 (defn desc-stats
   "Descriptive statistics map for x (collection)."
   [coll]
+  ;; FIXME: one element is also problematic due to /0 with variance
   (when (empty? coll) (throw (Exception. "trying to get stats from empty coll")))
   (let [x (dv coll),
         n (nd/dim x),
@@ -32,6 +33,7 @@
 
 ; TODO: rewrite to with-release
 (defn pearson-correlation
+  "Get Pearson correlation. Note this gives NaN on vectors with zeros."
   [coll1 coll2]
   (let [a (dv coll1),
         b (dv coll2),
