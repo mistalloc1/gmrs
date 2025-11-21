@@ -63,9 +63,18 @@
       :coolness-rating 60
       :city "gdańsk"}]))
 
+(deftest test-tag-value?
+  (is (tag-value? 56))
+  (is (tag-value? " zzzz  "))
+  (is (not (tag-value? "   ")))
+  (is (not (tag-value? nil))))
+
 (deftest test-get-multihot-values
   (is (= #{:jazz :rock :dub :rap}
-         (get-multihot-values (example-cases :genres)))))
+         (get-multihot-values (example-cases :genres))))
+  (is (= #{:jazz :rock :dub :rap}
+         (get-multihot-values (cons "  " (example-cases :genres))))
+      "don't include non-tag-value tags"))
 
 (deftest test-multihot-from-tags
   (is (= {:proc-dub [1.0 0.0 0.0],

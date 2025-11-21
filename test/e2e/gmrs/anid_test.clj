@@ -1,11 +1,13 @@
 (ns gmrs.anid-test
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as io]
             [gmrs.command :as cmd]
             [gmrs.wrangle :as wrangle]
+            [gmrs.preprocess :as preproc]
             [gmrs.io.csv :as csv]
             [gmrs.io.getters :as get]
             [gmrs.io.baseless :as bs]))
+
+(def test-page-size 120)
 
 (def example-cases
   [
@@ -81,22 +83,57 @@
   (binding [cmd/*GlobalIOSetup* (prepared-io-setup),
             cmd/*GlobalIOSettings*
             (assoc (bs/toy-temp-baseless-io-settings)
+                   :page-size test-page-size
                    :option-id :anime_id
                    :case-id :Mal-ID
                    :option-columns #{:anime_id :Name :Score :Genres
                                      :Episodes :Producers}
-                   :case-columns #{:Mal-ID})]
+                   :case-columns #{:Mal-ID :Gender :Completed
+                                   :Location :Dropped})]
+    (testing "getting the data without preprocessing"
       (let [options (first (get/get-options cmd/*GlobalIOSettings*
                                             cmd/*GlobalIOSetup*))]
         ; We expect the columnar format.
         (is (= 6 (count (keys options))))
-        (is (= 32 (wrangle/cols-row-count options))))))
+        (is (= test-page-size (wrangle/cols-row-count options)))))
+    (testing "preprocessing options, cases"
+      (cmd/new-governor! "anime-recs")
+      (cmd/autogovern! "anime-recs")
+      (let [guvna (get/get-governor cmd/*GlobalIOSettings* cmd/*GlobalIOSetup*
+                                    "anime-recs"),
+            case-getter (get/get-cases cmd/*GlobalIOSettings*
+                                       cmd/*GlobalIOSetup*),
+            opt-getter (get/get-options cmd/*GlobalIOSettings*
+                                        cmd/*GlobalIOSetup*),
+            tags-and-transfs (preproc/retag-with-preproc-transforms
+                               (:tags-preprocessing guvna)
+                               (map guvna [:case-columns :option-columns])
+                               [(first case-getter) (first opt-getter)]),
+            both-prepr (preproc/execute-preprocessing-instructions
+                          (:tags-table tags-and-transfs)
+                          (:set-taggings tags-and-transfs)
+                          [(second case-getter) (second opt-getter)]),
+            cases-prepr (first both-prepr), opts-prepr (second both-prepr)]
+        (is (= test-page-size (wrangle/cols-row-count cases-prepr))
+            "full cases page preprocessed")
+        (is (< 3 (count (filter (fn [k] (.startsWith (name k) "Location"))
+                                (keys cases-prepr))))
+            "multiple columns of encoded Location")
+        (is (< 1 (count (filter (fn [k] (.startsWith (name k) "Gender"))
+                                (keys cases-prepr))))
+            "multiple columns of encoded Gender")
+        (is (= [:Mal-ID :Gender :Completed :Location :Dropped]
+               (keys cases-prepr))
+            "all case columns preprocessed")))))
+
+;(run-test test-anid-loading)
 
 (deftest test-anid-recommend-to-some-features
   (binding [cmd/*GlobalIOSetup* (prepared-io-setup),
             cmd/*GlobalIOSettings* (bs/toy-temp-baseless-io-settings)]
     (cmd/set-db-settings! :option-id :anime_id
                           :case-id :Mal-ID
+                          :page-size test-page-size
                           :inter-id :inter-id
                           :inter-case :user_id
                           :inter-option :anime_id
@@ -116,8 +153,8 @@
 ;(run-test test-anid-recommend-to-some-features)
 
 #_(add-tap (fn [inp] (when (some #{(:place inp)}
-                                  [:preprocess-execute]
-                                  ;[:nn-from-inters :nn-from-cases]
+                                  ;[:preprocess-execute]
+                                  [:nn-from-inters :nn-from-cases]
                                   )
                        (println inp))))
 

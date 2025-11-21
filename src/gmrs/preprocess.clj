@@ -29,13 +29,23 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
 (defn split-tags-str [tags-str]
   (str/split tags-str #"\|"))
 
+(defn tag-value?
+  "Check if the value is usable for multihot taggs encoding."
+  [value]
+  (and value (not (and
+                    (some true? (map #(% value) [string? symbol? keyword?]))
+                    (= "" (str/trim (name value)))))))
+
 (defn get-multihot-values
   "Get a set of column values that can be used for future preprocessing; so all
   these and only these will be present after calling multihot-from-tags with
   this set."
   [tags-column]
-  (reduce into #{} (map (fn [value] (map keyword (split-tags-str value)))
-                        tags-column)))
+  (reduce into #{} (filter
+                     some?
+                     (map (fn [value] (when (tag-value? value)
+                                        (map keyword (split-tags-str value))))
+                          tags-column))))
 
 ; TODO: profile against a cleaner impl (this is the oldest code in the project)
 (defn multihot-from-tags
@@ -63,7 +73,8 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
                       ;; Add a column in output, if we don't have the set
                       ;; pre-determined.
                       (when (and (not values-set)
-                                 (not (@tag->cols tag-col-name)))
+                                 (not (@tag->cols tag-col-name))
+                                 (tag-value? tag-col-name))
                         (swap! tag->cols assoc tag-col-name zeros))
                       (when (@tag->cols tag-col-name)
                         (swap! tag->cols
