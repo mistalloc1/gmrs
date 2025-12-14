@@ -17,12 +17,13 @@
 
 (defn tags-map-usable?
   "In order for the variable to be usable as tags, the number of unique values
-  needs to be less than 2/3 of the whole sample series size."
+  needs to be less than 2/5 of the whole sample series size."
   [tags-map full-series-size]
-  (let [good? (< (* 3 (count tags-map))
+  (let [good? (< (* 5 (count tags-map))
                  (* 2 full-series-size))]
     (if good?
       (do
+        ;; tap the diag data
         (when (= 5 (count tags-map))
           (tap> {:good-tags-count (count tags-map) :series-size full-series-size
                  :some-tags (map pr-str (keys tags-map))

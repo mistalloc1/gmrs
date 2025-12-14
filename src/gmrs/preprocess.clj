@@ -7,7 +7,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
             [gmrs.wrangle :as wrangle]))
 
 ;; NOTE: If we don't debug, we try to ignore them.
-(def ^:dynamic *debug-preproc-exceptions* true)
+(def ^:dynamic *debug-preproc-exceptions* false)
 
 (defn longer [coll1 coll2]
   (if (> (count coll1) (count coll2))

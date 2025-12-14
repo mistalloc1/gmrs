@@ -4,9 +4,9 @@
 
 (deftest test-tags-map-usable?
   (is (= true
-         (tags-map-usable? {:a 3 :b 2 :c 1 :d 4} 8)))
+         (tags-map-usable? {:a 3 :b 2 :c 1 :d 4} 16)))
   (is (= false
-         (tags-map-usable? {:a 3 :b 2 :c 1 :d 4} 5))))
+         (tags-map-usable? {:a 3 :b 2 :c 1 :d 4} 8))))
 
 (def example-attrib-map {:str 4 :date-local 3})
 

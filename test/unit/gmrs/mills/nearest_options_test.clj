@@ -173,10 +173,16 @@
           "Kraków Rock for alojzy"))))
 
 (deftest nearest-options-scoring-few-cols
-  (nearest-options-scoring
-    {:a [0.0 0.0] :b [0.0 0.0]} {:a [0.0 0.0] :b [0.0 0.0]}
-    ["a" "b"] ["x" "y"])
-  )
+  (is (= (nearest-options-scoring
+           {:a [0.0 0.0] :b [0.0 0.0]} {:a [0.0 0.0] :b [0.0 0.0]}
+           ["e" "g"] ["x" "y"])
+         {["e" "x"] -1.0, ["e" "y"] -1.0, ["g" "x"] -1.0, ["g" "y"] -1.0})
+      "get -1.0 where we'd get NaNs from correlations of 0.0s ")
+  (is (= (nearest-options-scoring
+           {:a [0.0 0.0]} {:a [0.0 0.0]}
+           ["e" "g"] ["x" "y"])
+         {["e" "x"] -1.0, ["e" "y"] -1.0, ["g" "x"] -1.0, ["g" "y"] -1.0})
+      "one column - get -1.0 where we'd get NaNs from correlations of 0.0s "))
 
 (deftest test-interacted-cases-mask
   (is (= ["ferdek/warsaw" nil nil nil]

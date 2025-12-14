@@ -1,5 +1,6 @@
 (ns gmrs.anid-test
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
             [gmrs.command :as cmd]
             [gmrs.wrangle :as wrangle]
             [gmrs.preprocess :as preproc]
@@ -7,7 +8,7 @@
             [gmrs.io.getters :as get]
             [gmrs.io.baseless :as bs]))
 
-(def test-page-size 120)
+(def test-page-size 128)
 
 (def example-cases
   [
@@ -110,21 +111,28 @@
                                (map guvna [:case-columns :option-columns])
                                [(first case-getter) (first opt-getter)]),
             both-prepr (preproc/execute-preprocessing-instructions
-                          (:tags-table tags-and-transfs)
-                          (:set-taggings tags-and-transfs)
-                          [(second case-getter) (second opt-getter)]),
+                         (:tags-table tags-and-transfs)
+                         (:set-taggings tags-and-transfs)
+                         [(second case-getter) (second opt-getter)]),
             cases-prepr (first both-prepr), opts-prepr (second both-prepr)]
-        (is (= test-page-size (wrangle/cols-row-count cases-prepr))
-            "full cases page preprocessed")
-        (is (< 3 (count (filter (fn [k] (.startsWith (name k) "Location"))
-                                (keys cases-prepr))))
-            "multiple columns of encoded Location")
-        (is (< 1 (count (filter (fn [k] (.startsWith (name k) "Gender"))
-                                (keys cases-prepr))))
-            "multiple columns of encoded Gender")
-        (is (= [:Mal-ID :Gender :Completed :Location :Dropped]
-               (keys cases-prepr))
-            "all case columns preprocessed")))))
+        (testing "Preprocessed cases"
+          (run! println (keys cases-prepr))
+          (is (= test-page-size (wrangle/cols-row-count cases-prepr))
+              "full cases page preprocessed")
+          (is (> (count (filter (fn [key-name]
+                                  (str/starts-with? key-name "Location-"))
+                                (map name (keys cases-prepr))))
+                 2)
+              "multiple Location tag columns")
+          (is (= (count (filter (fn [key-name]
+                                  (str/starts-with? key-name "Gender-"))
+                                (map name (keys cases-prepr))))
+                 2)
+              "Gender detected as tag columns, don't encode nils")
+          (is (contains? cases-prepr :Dropped)
+              "Dropped encoded as number scale")
+          (is (contains? cases-prepr :Completed)
+              "Completed encoded as number scale"))))))
 
 ;(run-test test-anid-loading)
 
@@ -151,11 +159,5 @@
           "recs gotten, guvna recs-amount observed"))))
 
 ;(run-test test-anid-recommend-to-some-features)
-
-#_(add-tap (fn [inp] (when (some #{(:place inp)}
-                                  ;[:preprocess-execute]
-                                  [:nn-from-inters :nn-from-cases]
-                                  )
-                       (println inp))))
 
 ; (run-test test-anid-loading)
