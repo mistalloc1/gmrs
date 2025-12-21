@@ -76,7 +76,9 @@
   (sequence-log-likelihood [this xs]
                         "Give the log likelihood of xs given the distribution.")
   (point-likelihood [this x]
-                    "Likelihood, or density function value, for the point X."))
+                    "Likelihood, or density function value, for the point X.")
+  (params-count [this]
+                "The number of parameters estimated for the model."))
 
 (defrecord UnimodalGaussian
   [mean variance sd])
@@ -102,7 +104,8 @@
                 (clj-math/log (* 2 clj-math/PI (:variance this)))))
           (* (/ 1 (* 2 (:variance this)))
              (reduce + (map #(clj-math/pow (- % (:mean this)) 2) xs)))))),
-   :point-likelihood gaussian-density-at-x})
+   :point-likelihood gaussian-density-at-x
+   :params-count (fn [this] 2)})
 
 (defn mle-unimodal-gaussian
   "Get a unimodal Gaussian distribution obtained by Maximum Likelihood Estimation
@@ -160,12 +163,18 @@
                                            (gaussian-density-at-x
                                              (nth member-models %)
                                              x))
-                                       (range (:k this))))))})
+                                       (range (:k this))))))
+     :params-count (fn [this] (+ (* 2 (:k this)) ; sigmas and means
+                                 ;; the last weight is determined by subtracting
+                                 ;; the rest from 1.0
+                                 (dec (:k this))))})
 
 (def EM-STOP-EPSILON 0.1)
 (def EM-MAX-ITER 100)
 
 ;; the EM algo equations taken from https://stephens999.github.io/fiveMinuteStats/intro_to_em.html
+(declare gmm-e-step)
+
 (defn gmm-m-step
   "The M step of the EM algorithm for Maximum Likelihood Estimation for Gaussian
   Mixture Models. Return a function for trampoline, calling the E step with the
@@ -223,7 +232,6 @@
       new-mixture
       #(gmm-m-step new-mixture xs (inc iter-n)))))
 
-;; TODO: max iter
 (defn mle-gaussian-mixture
   [xs k]
   (let [empirical-stats (desc-stats xs),
@@ -242,3 +250,15 @@
                                    (map #(clj-math/pow % 2) divided-sds)
                                    divided-sds)
                 xs 1)))
+
+(defn bayesian-inform-criterion
+  "Bayesian Information Criterion, similar to Akaike Information Criterion, is
+  a tool for selecting a better distribution for the data based on log likelihood
+  and the degrees of freedom. The function returns the best distribution that
+  was selected for xs, i.e., the data.."
+  [dists xs]
+  (first (sort-by (fn [dist] (- (* (params-count dist)
+                                   (clj-math/log (count xs)))
+                                (* 2 (sequence-log-likelihood dist xs))))
+                  <
+                  dists)))

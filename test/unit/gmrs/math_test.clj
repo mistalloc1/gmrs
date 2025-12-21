@@ -76,6 +76,14 @@
                 (sequence-log-likelihood example-dist [4.0 -28.0 100.5]))
         "examples from test-point-likelihood-mixture summed")))
 
+(deftest test-params-count-mixture
+  (is (= 8 (params-count (->GaussianMixture
+                           3
+                           [0.2 0.6 0.2]
+                           [0.0 100.0 -25.0]
+                           [9.0 1.0 25.0]
+                           [3.0 1.0 5.0])))))
+
 (deftest test-mle-gaussian-mixture
   (let [fit-dist (mle-gaussian-mixture [-5.0 100.0 1.0 3.0 99.0 102.5 98.5 101.0]
                                        2),
@@ -95,5 +103,15 @@
            0.0))
     (is (close? 0.0001 (clj-math/pow (nth (:sds fit-dist) lower-subdist-k) 2)
                 (nth (:variances fit-dist) lower-subdist-k)))))
+
+(deftest test-integr-bayesian-inform-criterion
+  (let [fit-dist-uni (mle-unimodal-gaussian [50.0 49.99 44.0 55.0]),
+        fit-dist-bi (mle-gaussian-mixture [9.0 12.0 15.0 115.4 114.0] 2)]
+    (is (= fit-dist-uni (bayesian-inform-criterion
+                          [fit-dist-uni fit-dist-bi]
+                          [43.0 52.0 51.4])))
+    (is (= fit-dist-bi (bayesian-inform-criterion
+                          [fit-dist-uni fit-dist-bi]
+                          [103.0 10.0 7.0 113.0 17.0])))))
 
 ; (run-tests 'gmrs.math-test)
