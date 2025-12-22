@@ -116,14 +116,15 @@
                          [(second case-getter) (second opt-getter)]),
             cases-prepr (first both-prepr), opts-prepr (second both-prepr)]
         (testing "Preprocessed cases"
-          (run! println (keys cases-prepr))
           (is (= test-page-size (wrangle/cols-row-count cases-prepr))
               "full cases page preprocessed")
-          (is (> (count (filter (fn [key-name]
-                                  (str/starts-with? key-name "Location-"))
+          (is (= (count (filter (fn [key-name]
+                                  (str/starts-with? key-name "Location"))
                                 (map name (keys cases-prepr))))
-                 2)
-              "multiple Location tag columns")
+                 0)
+              ;; NOTE: there are too many unique values to treat it as meaningful
+              ;; tags, so we expect skipping that column completely.
+              "Location column(s) should be rejected")
           (is (= (count (filter (fn [key-name]
                                   (str/starts-with? key-name "Gender-"))
                                 (map name (keys cases-prepr))))
@@ -132,7 +133,17 @@
           (is (contains? cases-prepr :Dropped)
               "Dropped encoded as number scale")
           (is (contains? cases-prepr :Completed)
-              "Completed encoded as number scale"))))))
+              "Completed encoded as number scale"))
+        (testing "Preprocessed options"
+          (is (contains? opts-prepr :Episodes)
+              "Dropped encoded as number scale")
+          (is (contains? opts-prepr :Score)
+              "Completed encoded as number scale"))
+          (is (> (count (filter (fn [key-name]
+                                  (str/starts-with? key-name "Genres-"))
+                                (map name (keys opts-prepr))))
+                 1)
+              "Multiple Genre tag columns")))))
 
 ;(run-test test-anid-loading)
 

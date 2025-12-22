@@ -2,7 +2,7 @@
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [gmrs.io.getters :as get]
-            [gmrs.data-diag :refer [diag-all-values]]
+            [gmrs.data-diag :refer [diag-column]]
             [gmrs.preprocess :as preproc]
             [gmrs.wrangle :as wrangle]))
 
@@ -68,7 +68,7 @@
   (let [sample (first getter)]
     (reduce into
             (map (fn [col-name col]
-                   {col-name (diag-all-values col)})
+                   {col-name (diag-column col)})
                  (keys sample)
                  (vals sample)))))
 

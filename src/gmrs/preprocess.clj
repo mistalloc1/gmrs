@@ -27,7 +27,7 @@ meaning-agnostic things about reformatting etc. should go into wrangle."
   (math/z-logistic-scale coll (:mean transf) (:sd transf)))
 
 (defn split-tags-str [tags-str]
-  (str/split tags-str #"\|"))
+  (str/split tags-str #"(\|)|,"))
 
 (defn tag-value?
   "Check if the value is usable for multihot taggs encoding."

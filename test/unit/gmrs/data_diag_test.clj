@@ -50,6 +50,28 @@
          (diag-potential-datetime "     2004-11-13T00:00:00+00:00  "
                                   example-attrib-map))))
 
+(deftest test-diag-potential-tags
+  (let [example-tags-map {"crabs" 4, "lions" 5, "seals" 14}]
+    (is (= { :maybe-tags-map {"crabs" 5, "lions" 6, "seals" 14} :tags 21 }
+           (diag-potential-tags "crabs|lions"
+                                { :maybe-tags-map example-tags-map :tags 20 }
+                                40)))
+    (is (= { :maybe-tags-map {"crabs" 5, "lions" 6, "seals" 14} :tags 21 }
+           (diag-potential-tags "crabs, lions"
+                                { :maybe-tags-map example-tags-map :tags 20 }
+                                40)))
+    (is (= { :maybe-tags-map {"crabs" 4, "lions" 6, "seals" 14} :tags 21 }
+           (diag-potential-tags "lions"
+                                { :maybe-tags-map example-tags-map :tags 20 }
+                                40)))
+    (is (= { :tags -1 }
+           (diag-potential-tags "crabs|lions"
+                                { :maybe-tags-map
+                                  (assoc example-tags-map :squids 4 :bears 4)
+                                  :tags 3 }
+                                5))
+        "bail on too many values")))
+
 (deftest test-diag-string-and-update
   "Correctness of these steps assumes that diag-string only adds correct update
   data for the new string and doesn't really care about what was in the supplied
@@ -82,20 +104,15 @@
   (is #{:foo :baz}
       (prefer-keyword #{:foo :baz} :foo :bar)))
 
-(deftest test-diag-all-values
+(deftest test-diag-column
   (is (= #{:float}
-         (diag-all-values [45.3 124.3 25643.43 3655.5 43245.4])))
+         (diag-column [45.3 124.3 25643.43 3655.5 43245.4])))
   (is (= #{:float :str :float-needs-conv}
-         (diag-all-values ["45.3" "124.3" "25643.43" "3655.5" "43245.4"])))
+         (diag-column ["45.3" "124.3" "25643.43" "3655.5" "43245.4"])))
   (is (= #{:float :str :float-needs-conv}
-         (diag-all-values ["45.3 " "124.3 " "25643.43 " "3655.5 " "43245.4"])))
+         (diag-column ["45.3 " "124.3 " "25643.43 " "3655.5 " "43245.4"])))
   (is (= #{:integer :str :integer-needs-conv}
-         (diag-all-values [" 45 " "124 " "25643 " "3655 " "43245"]))
+         (diag-column [" 45 " "124 " "25643 " "3655 " "43245"]))
       "prefer integer to float"))
-
-#_(diag-all-values
-  ["1.0" "23.0" "16.0" "5.0" "1.0" "11.0" "20.0" "27.0" "0.0" "15.0" "0.0" "34.0"
-   "30.0" "2.0" "13.0" "4.0" "6.0" "3.0" " 2.0" "4.0" "1.0" "221.0" "14.0" "2.0"
-   "2.0" "20.0" "46.0" "7.0" "1.0" "7.0" "34.0" "10.0"])
 
 ; (run-tests 'gmrs.data-diag-test)

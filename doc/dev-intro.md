@@ -31,6 +31,24 @@ dev practices many of us are moored into every day.
 - Don't get entangled too much into forges such as GitHub and related ceremonies
   - Project planning through todos and the ROADMAP.md file
 
+## Setting up taps
+
+There are Clojure tap> calls put in some places in the code. Their intended
+purpose is for debugging. The general "area" of the tap information is indicated
+by the :place keyword. You can use it like this (with a set containing the
+:place's you want to print from):
+
+```
+(def dbg-tap (fn [t] (when (#{:diag-column} (:place t)) (println t))))
+(add-tap dbg-tap)
+```
+
+And later:
+
+```
+(remove-tap dbg-tap)
+```
+
 ## Specific considerations
 
 ### Outside of JVM

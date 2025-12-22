@@ -8,6 +8,11 @@
 (defn close? [tolerance x y]
   (< (Math/abs (double (- x y))) tolerance))
 
+(deftest test-split-tags-str
+  (is (= ["mama" "tata" "komputer"] (vec (split-tags-str "mama|tata|komputer"))))
+  (is (= ["mama" "tata" "komputer"] (vec (split-tags-str
+                                           "mama, tata, komputer")))))
+
 (deftest test-safe-parse
   (is (= 10 (:priority (safe-parse #(Float/parseFloat %)))) "correct priority")
   (testing "integers safe-parse"

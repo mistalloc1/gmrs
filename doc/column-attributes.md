@@ -10,7 +10,7 @@ instead.
 
 - `:integer` - integer
 - `:float` - float
-- `:tags` - default string interpretation, separated by pipes (|)
+- `:tags` - default string interpretation, separated by pipes (|) or commas
 - `:str` - string
 - Time attributes:
   - `:date-zoned-with-time`

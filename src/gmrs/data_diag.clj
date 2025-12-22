@@ -1,5 +1,6 @@
 (ns gmrs.data-diag
   (:require [clojure.string :as str]
+            [gmrs.preprocess :refer [split-tags-str]]
             [gmrs.math :as math]))
 
 (defn init-or-inc-if-pos [v] (cond (nil? v) 1
@@ -30,12 +31,12 @@
         (when (= 5 (count tags-map))
           (tap> {:good-tags-count (count tags-map) :series-size full-series-size
                  :some-tags (map pr-str (keys tags-map))
-                 :place :diag-all-values}))
+                 :place :diag-column}))
         true)
       (do
         (tap> {:bad-tags-count (count tags-map) :series-size full-series-size
                :some-tags (map pr-str (take 5 (keys tags-map)))
-               :place :diag-all-values})
+               :place :diag-column})
         false))))
 
 (defn multimodal-dist?
@@ -44,11 +45,6 @@
   (let [usable-part (filter number? coll),
         unimodal (math/mle-unimodal-gaussian usable-part),
         multimodal (math/mle-gaussian-mixture usable-part 3)]
-    (println "multimodal" (:weights multimodal))
-    (println (:means multimodal))
-    (println (:variances multimodal))
-    (println (math/sequence-log-likelihood multimodal usable-part))
-    (println (math/sequence-log-likelihood unimodal usable-part))
     (= multimodal
        (math/bayesian-inform-criterion [unimodal multimodal] usable-part))))
 
@@ -85,13 +81,14 @@
        (try (parse-fun str-value)
             (catch NumberFormatException _ false))))
 
+;; TODO: in theory tags could be given as numbers
 (defn diag-potential-tags
   "Update or create the attrib-map part which says if tags can be extracted from
   the data series containing the value."
   [value attrib-map full-series-size]
   (let [updated-tags
         (merge (:maybe-tags-map attrib-map)
-               (bump-for (str/split value #"\|")
+               (bump-for (split-tags-str value)
                          (:maybe-tags-map attrib-map)))]
     (if (tags-map-usable? updated-tags full-series-size)
       { :tags (init-or-inc-if-pos (:tags attrib-map)),
@@ -136,17 +133,24 @@
   (set
     (filter keyword?
             (map (fn [[attr diag-info]]
-                   (when (and (number? diag-info) ;; nulled if rejected earlier
-                              (enough? diag-info (count coll))
-                              ;; Before accepting the :tags attribute, check
-                              ;; if the column may not be a numerical sequence
-                              ;; with some natural-looking number distribution,
-                              ;; i.e. not heavily multimodal, suggesting
-                              ;; arbitrary codes.
-                              (or (not= attr :tags)
-                                  (not (some #{:float :integer}
-                                             (keys attrib-map)))
-                                  (multimodal-dist? coll)))
+                   (when
+                     (and (number? diag-info) ;; nulled if rejected earlier
+                          (enough? diag-info (count coll))
+                          ;; Before accepting the :tags attribute, check
+                          ;; if the column may not be a numerical sequence
+                          ;; with some natural-looking number distribution,
+                          ;; i.e. not heavily multimodal, suggesting
+                          ;; arbitrary codes.
+                          (or (not= attr :tags)
+                              (not (some #{:float :integer}
+                                         (keys attrib-map)))
+                              (multimodal-dist?
+                                (map (fn [x]
+                                       (if (float? x)
+                                         x
+                                         (try (Float/parseFloat x)
+                                              (catch Exception _ nil))))
+                                     coll))))
                      attr))
                  attrib-map))))
 
@@ -160,7 +164,7 @@
   ([coll]
    (let [size (count coll)]
      (tap> {:coll (pr-str coll) :type (when (seq coll) (type (first coll)))
-                 :size size :place :diag-pass-through-column})
+                 :size size :place :diag-column})
      (diag-pass-through-column coll {} size)))
   ([coll attrib-map full-size]
    (if (empty? coll)
@@ -174,8 +178,9 @@
          string? (diag-string-and-update (first coll) attrib-map full-size))
        full-size))))
 
-(defn diag-all-values
-  "
+(defn diag-column
+  "Use the values of the coll to diagnose and decide which column attributes
+  should be assigned to it.
 
   The attributes end up being added if the diag-info associated with them is
   high enough. If it is negative at any point, this means we give up on it."
@@ -192,5 +197,5 @@
            ;; like the number of episodes, 26, 52...
            [:tags :integer] [:tags :integer-needs-conv]
            [:tags :float] [:tags :float-needs-conv]])]
-       (tap> {:attrs final-attrs :place :diag-all-values})
+       (tap> {:attrs final-attrs :place :diag-column})
        final-attrs))
