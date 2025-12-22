@@ -10,6 +10,15 @@
 
 (def example-attrib-map {:str 4 :date-local 3})
 
+(deftest test-multimodal-dist?
+  (is (false? (multimodal-dist?
+                (apply concat (map (fn [i] (map #(+ i %)
+                                                [72.0 84.0 45.0 88.0 99.0]))
+                                   (range 10))))))
+  (is (true? (multimodal-dist? (concat (repeat 10 404)
+                                       (repeat 40 200)
+                                       (repeat 33 503))))))
+
 (deftest test-heuristic-is-datetime?
   (is (= false (heuristic-is-datetime? "dragons")))
   (is (= false (heuristic-is-datetime? "324253356 dragons")))

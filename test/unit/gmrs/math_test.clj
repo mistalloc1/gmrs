@@ -85,8 +85,10 @@
                            [3.0 1.0 5.0])))))
 
 (deftest test-mle-gaussian-mixture
-  (let [fit-dist (mle-gaussian-mixture [-5.0 100.0 1.0 3.0 99.0 102.5 98.5 101.0]
-                                       2),
+  (testing "multimodal case"
+    (let [fit-dist (mle-gaussian-mixture [-5.0 100.0 1.0 3.0 99.0 102.5 98.5
+                                          101.0]
+                                         2),
         lower-subdist-k (if (> (first (:means fit-dist))
                                (second (:means fit-dist)))
                           1 0),
@@ -103,6 +105,12 @@
            0.0))
     (is (close? 0.0001 (clj-math/pow (nth (:sds fit-dist) lower-subdist-k) 2)
                 (nth (:variances fit-dist) lower-subdist-k)))))
+  (testing "trying to fit multimodal on actually unimodal sample"
+    (let [fit-dist (mle-gaussian-mixture [72.0 84.0 45.0 88.0 99.0 84.5 89.0]
+                                         3)]
+      (is (< 0.5 (apply max (:weights fit-dist))))
+      (is (> 0.001 (apply min (:variances fit-dist)))
+          "one of the models is actually dead with overfit mean"))))
 
 (deftest test-integr-bayesian-inform-criterion
   (let [fit-dist-uni (mle-unimodal-gaussian [50.0 49.99 44.0 55.0]),

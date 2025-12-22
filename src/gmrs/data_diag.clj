@@ -1,5 +1,6 @@
 (ns gmrs.data-diag
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [gmrs.math :as math]))
 
 (defn init-or-inc-if-pos [v] (cond (nil? v) 1
                                    (pos? v) (inc v)
@@ -12,8 +13,10 @@
         (map (fn [k] { k (init-or-inc-if-pos (get attrib-map k)) })
              ks)))
 
-(defn enough? [num-score full-series-size]
-  (> (* num-score 2) full-series-size))
+(defn enough?
+  "The column attribute must match at least 2/3 of the series/column to count."
+  [num-score full-series-size]
+  (> (* 3 num-score) (* 2 full-series-size)))
 
 (defn tags-map-usable?
   "In order for the variable to be usable as tags, the number of unique values
@@ -34,6 +37,20 @@
                :some-tags (map pr-str (take 5 (keys tags-map)))
                :place :diag-all-values})
         false))))
+
+(defn multimodal-dist?
+  "Check if the collection seems to be taken from a multimodal distribution."
+  [coll]
+  (let [usable-part (filter number? coll),
+        unimodal (math/mle-unimodal-gaussian usable-part),
+        multimodal (math/mle-gaussian-mixture usable-part 3)]
+    (println "multimodal" (:weights multimodal))
+    (println (:means multimodal))
+    (println (:variances multimodal))
+    (println (math/sequence-log-likelihood multimodal usable-part))
+    (println (math/sequence-log-likelihood unimodal usable-part))
+    (= multimodal
+       (math/bayesian-inform-criterion [unimodal multimodal] usable-part))))
 
 (defn heuristic-is-datetime? [value]
   (let [dig-groups (re-seq #"\d+" value)]
@@ -110,40 +127,44 @@
     (disj s other-keyword)
     s))
 
-(defn diag-all-values
+(defn final-attrs-filter
+  "After collecting the speculative attributes by scanning the column of the
+  full-size, prune the attrib-map with the final filters.
+
+  This happens *before* selecting preferred tags from what is left."
+  [attrib-map coll]
+  (set
+    (filter keyword?
+            (map (fn [[attr diag-info]]
+                   (when (and (number? diag-info) ;; nulled if rejected earlier
+                              (enough? diag-info (count coll))
+                              ;; Before accepting the :tags attribute, check
+                              ;; if the column may not be a numerical sequence
+                              ;; with some natural-looking number distribution,
+                              ;; i.e. not heavily multimodal, suggesting
+                              ;; arbitrary codes.
+                              (or (not= attr :tags)
+                                  (not (some #{:float :integer}
+                                             (keys attrib-map)))
+                                  (multimodal-dist? coll)))
+                     attr))
+                 attrib-map))))
+
+(defn diag-pass-through-column
   "Create or update (in the subsequent calls) the attrib-map containing the
   column attributes. The function recurs itself until the coll of values is
   exhausted, then just returns a coll of column attributes decided for the whole
   data series.
 
-  The attributes end up being added if the diag-info associated with them is
-  high enough. If it is negative at any point, this means we give up on it."
+  More rules will need to be executed later after collecting those initial tags."
   ([coll]
    (let [size (count coll)]
      (tap> {:coll (pr-str coll) :type (when (seq coll) (type (first coll)))
-                 :size size :place :diag-all-values})
-     (diag-all-values coll {} size)))
+                 :size size :place :diag-pass-through-column})
+     (diag-pass-through-column coll {} size)))
   ([coll attrib-map full-size]
    (if (empty? coll)
-     ;; The coll has been exhausted, decide on the attributes to leave.
-     (let [final-attrs
-           (reduce
-             (fn [attrs pref-pair]
-               (apply prefer-keyword attrs pref-pair))
-             (set
-               (filter keyword?
-                       (map (fn [[attr diag-info]]
-                              (when (and (number? diag-info)
-                                         (enough? diag-info full-size))
-                                attr))
-                            attrib-map)))
-             [[:integer :float] [:integer-needs-conv :float-needs-conv]
-              ;; NOTE: these are more risky - when less options are observed,
-              ;; like the number of episodes, 26, 52...
-              [:tags :integer] [:tags :integer-needs-conv]
-              [:tags :float] [:tags :float-needs-conv]])]
-       (tap> {:attrs final-attrs :place :diag-all-values})
-       final-attrs)
+     attrib-map
      ;; Work on the remaining part of coll.
      (recur
        (rest coll)
@@ -152,3 +173,24 @@
          integer? (update attrib-map :int init-or-inc-if-pos)
          string? (diag-string-and-update (first coll) attrib-map full-size))
        full-size))))
+
+(defn diag-all-values
+  "
+
+  The attributes end up being added if the diag-info associated with them is
+  high enough. If it is negative at any point, this means we give up on it."
+  [coll]
+  (let [attrib-map (diag-pass-through-column coll),
+        final-attrs
+        ;; Apply the final filtering, before selecting the preferred tags
+        ;; from the defined pairs (the rest are left as they are).
+        (reduce
+          (fn [attrs pref-pair] (apply prefer-keyword attrs pref-pair))
+          (final-attrs-filter attrib-map coll)
+          [[:integer :float] [:integer-needs-conv :float-needs-conv]
+           ;; NOTE: these are more risky - when less options are observed,
+           ;; like the number of episodes, 26, 52...
+           [:tags :integer] [:tags :integer-needs-conv]
+           [:tags :float] [:tags :float-needs-conv]])]
+       (tap> {:attrs final-attrs :place :diag-all-values})
+       final-attrs))

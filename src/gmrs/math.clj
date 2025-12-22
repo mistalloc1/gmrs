@@ -210,14 +210,18 @@
                             (nth point-weight-sums k)))
                        (range (:k mixture-model))),
         new-variances (map (fn [k]
-                             (/ (reduce + (map
-                                            (fn [x loc-weight]
-                                              (* loc-weight
-                                                 (clj-math/pow (- x
-                                                                  (nth new-means
-                                                                       k))
-                                                               2)))
-                                            xs (nth model-per-point-weights k)))
+                             (/ (reduce
+                                  + (map
+                                      (fn [x loc-weight]
+                                        (max
+                                          ;; guard against 0.0 variance
+                                          0.0001
+                                          (* loc-weight
+                                             (clj-math/pow (- x
+                                                              (nth new-means
+                                                                   k))
+                                                           2))))
+                                      xs (nth model-per-point-weights k)))
                                 (nth point-weight-sums k)))
                            (range (:k mixture-model)))
         new-sds (map #(clj-math/sqrt %) new-variances),
@@ -255,10 +259,14 @@
   "Bayesian Information Criterion, similar to Akaike Information Criterion, is
   a tool for selecting a better distribution for the data based on log likelihood
   and the degrees of freedom. The function returns the best distribution that
-  was selected for xs, i.e., the data.."
-  [dists xs]
-  (first (sort-by (fn [dist] (- (* (params-count dist)
-                                   (clj-math/log (count xs)))
-                                (* 2 (sequence-log-likelihood dist xs))))
-                  <
-                  dists)))
+  was selected for xs, i.e., the data.
+
+  The param-penalty is used to additionally favor simpler models."
+  ([dists xs] (bayesian-inform-criterion dists xs 10))
+  ([dists xs param-penalty]
+   (first (sort-by (fn [dist] (- (* (params-count dist)
+                                    param-penalty
+                                    (clj-math/log (count xs)))
+                                 (* 2 (sequence-log-likelihood dist xs))))
+                   <
+                   dists))))
