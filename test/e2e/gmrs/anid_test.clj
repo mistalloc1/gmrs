@@ -145,8 +145,6 @@
                  1)
               "Multiple Genre tag columns")))))
 
-;(run-test test-anid-loading)
-
 (deftest test-anid-recommend-to-some-features
   (binding [cmd/*GlobalIOSetup* (prepared-io-setup),
             cmd/*GlobalIOSettings* (bs/toy-temp-baseless-io-settings)]

@@ -1,7 +1,8 @@
 /target
 /classes
 /checkouts
-/dev
+/dev/*/*.csv
+/dev/*/*.txt
 /.cpcache
 /.lsp
 /.clj-kondo

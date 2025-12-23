@@ -342,8 +342,6 @@
         case-ids-with-inters (interacted-cases-mask
                                cases
                                (wrangle/stack inters more-inters))]
-    (println "Not interacted:"
-             (wrangle/cols-from-row-mask cases (map not case-ids-with-inters)))
     (merge
       (nearest-options-from-cases-mill
         (wrangle/cols-from-row-mask cases (map not case-ids-with-inters))

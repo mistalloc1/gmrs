@@ -19,6 +19,11 @@ the following files:
 - user-filtered.csv
 - users-details-2023.csv
 
+A Babashka script is provided to inspect the info on specific anime IDs and
+user IDs (in terms of getting some of their watched shows). Run it with
+`bb anime_query.clj` to learn the available args (you have to have Babashka
+installed).
+
 ### `/edgar`
 
 Download from https://www.sec.gov/data-research/sec-markets-data/edgar-log-file-data-sets
