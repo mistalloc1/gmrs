@@ -8,6 +8,16 @@ the new features.
 
 ## [Unreleased]
 
+## [0.0.4] - 2025-12-26
+
+### Added
+
+- Column data diagnosis for detecting simple types (tags, numbers, some dates).
+- Improved detection of categorical-numerical data.
+- Preprocessing function priorities.
+- Consistent columns for multihot encoding raw columns, skip nil values.
+- Extended testing for Anime Database along with fixes and polishing some logic.
+
 ## [0.0.3] - 2025-10-16
 
 ### Added
