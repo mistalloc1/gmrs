@@ -176,6 +176,22 @@ as it cares about the meaning of the data, it should go into preprocess."
                           (get (meta scoring-table) :options))) })
                (get (meta scoring-table) :cases))))
 
+(defn top-scorings
+  "Only select the top scoring entries for each case from the scoring-table.
+  Metadata will not be preserved."
+  [scoring-table]
+  (reduce-kv
+    (fn [result case top]
+      (assoc result [case (:opt top)] (:score top)))
+    {}
+    (reduce-kv
+      (fn [top-scores [case opt] score]
+        (if (> score (or (:score (get top-scores case)) -2))
+          (assoc top-scores case { :opt opt :score score })
+          top-scores))
+      {}
+      scoring-table)))
+
 (defn options-to-cases-scoring-table
   "Given a scoring table made option-to-option, derive scores for the recommended
   options applicable when recommending them for the cases; do this by averaging

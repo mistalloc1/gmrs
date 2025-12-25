@@ -162,11 +162,20 @@
     (cmd/autogovern! "anime-recs")
     (cmd/force-mill! "anime-recs" :nearest-options)
     (let [recs (cmd/recommend-to "anime-recs" nil nil example-cases)]
+      ;(run! (fn [[target rs]] (println target (map :anime_id rs)))
+      ;      recs)
       (is (= #{222 224 228} (set (keys recs)))
           "recommendations keyed by cases")
       (is (= 5 (count (get recs 222)))
-          "recs gotten, guvna recs-amount observed"))))
+          "recs gotten, guvna recs-amount observed")
+      ;; TODO: try to test on recommended options metadata
+      (is (= 2 (reduce +
+                       (map #(if (pos? %) 1 0)
+                            (map (fn [user-recs] (:score (first user-recs)))
+                                 (vals recs)))))
+          (str "we should find positive score recommendations for most"
+               " users (some don't have findable similar cases)")))))
 
 ;(run-test test-anid-recommend-to-some-features)
 
-; (run-test test-anid-loading)
+; (run-tests 'gmrs.anid-test)

@@ -43,6 +43,16 @@ by the :place keyword. You can use it like this (with a set containing the
 (add-tap dbg-tap)
 ```
 
+If you want to print skip some data with some tap events you can customize it
+further like so (here don't show :new-data except for particular :current-step):
+
+```
+(def dbg-tap (fn [t] (when (#{:nn-from-inters :nn-from-cases} (:place t))
+                       (println (if (= (:current-step t) :more-cases)
+                                  t
+                                  (dissoc t :new-data))))))
+```
+
 And later:
 
 ```

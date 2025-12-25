@@ -177,6 +177,14 @@
 (deftest test-average-score
   (is (= 0.4 (average-score [1.0 0.1 0.2 0.5 0.2]))))
 
+(deftest test-top-scorings
+  (is
+    (= { [:case-1 :opt-2] 0.7, [:case-2 :opt-2] 0.7, [:case-3 :opt-3] 0.8 }
+       (top-scorings
+         { [:case-1 :opt-2] 0.7, [:case-1 :opt-3] 0.3,
+           [:case-2 :opt-2] 0.7, [:case-2 :opt-3] 0.5,
+           [:case-3 :opt-2] 0.2, [:case-3 :opt-3] 0.8 }))))
+
 (deftest test-options-to-cases-scoring-table
   (let [options-scoring-table
         (with-meta

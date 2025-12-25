@@ -228,12 +228,22 @@
                     step-number)]
     (cond
       (and continue? (not= last-step :more-cases)
-           ;; More cases needed - either 0 or all used for ranking...
-           (= (count (:options (meta case-similarities)))
-              (wrangle/cols-row-count aux-cases))
-           ;; ...and there is equal or more final recs than aux cases
-           (<= (count (:options (meta case-similarities)))
-               (count (:options (meta recommendations)))))
+           (or
+             (and
+               ;; More cases needed - either 0 or all used for ranking...
+               (= (count (:options (meta case-similarities)))
+                  (wrangle/cols-row-count aux-cases))
+               ;; ...and there is equal or more final recs than aux cases
+               (<= (count (:options (meta case-similarities)))
+                   (count (:options (meta recommendations)))))
+             ;; some target cases only have negative matches
+             ;; TODO: trim case-similarities to the top ones per case?
+             ;; (to make top-scorings less costly)
+             (and (seq recommendations)
+                  (zero? (mod step-number 5))
+                  (some neg?
+                        (vals
+                          (wrangle/top-scorings case-similarities))))))
       (let [more-cases (first gettable-cases)]
         (tap> {:last-step last-step, :current-step :more-cases,
                :new-data more-cases :place :nn-from-cases})
@@ -267,7 +277,7 @@
                partial-pull-strat (inc step-number) :rank-cases
                recommendations))
 
-      ;; Get more inters - all options from aux-relevant inters already used.
+      ;; Get more inters - options from aux-cases-relevant inters already used.
       (and continue? (not= last-step :more-inters)
            (let [aux-case-ids-set (set (case-id aux-cases))]
              (subset? (set (inter-option
@@ -335,7 +345,8 @@
   "Look at the cases and determine which ones can get recommendations from
   similar options to their interactions, and which (with little interactions)
   have to get recommended options from hopefully similar cases."
-  [cases options inters gettable-cases gettable-options gettable-inters pull-strategy]
+  [cases options inters gettable-cases gettable-options gettable-inters
+   pull-strategy]
   ;; TODO: heuristic of getting two pages of inters, kinda weak
   (assert (:io-settings (meta cases)))
   (let [more-inters (wrangle/stack inters (first gettable-inters)),
