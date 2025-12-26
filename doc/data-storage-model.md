@@ -40,24 +40,28 @@ of records to add.
 
 * options (candidates, items)
 * cases (users, targets)
-* decisions (decs) - recommendations of options for cases, with the user's "agree(ment)" {0.0, 1.0}
-* interactions (inters) - between real world case and options
+* decisions (decs) - events of recommending options for cases (case and list of opts).
+* interactions (inters) - between real world case and options, can include rating
 * governors (governs, govs, guvnas) - the GMRS control objects
 
-## Expectations from the users
+## Expectations from the GMRS users
 
-### ID and agree columns
+### ID and other hardcoded-meaning columns
 
 The users should be expected to provide ID columns for cases, options and
 governors. The IDs for cases and options are also set for decision and interaction
 storage. This is on the *GlobalIOSetup* level; if the gives/sends use different
 IDs internally, this can be handled by the drivers. IDs can be any data type.
 
-The decision store also needs an agree column which can be either boolean or
-numeric in the range {0.0, 1.0}.
-
 The ID columns should be unique, but we *can* try to do some detection
 and/or mitigation if this isn't the case.
+
+The decisions should implement lists of options recommended for the case.
+
+#### Interaction meaningful columns
+
+- decision-id - the associated decision ID which resulted in the interaction.
+- rating - a number.
 
 ### Keeping track of governors
 
@@ -67,9 +71,8 @@ you use.
 ### Storing decisions
 
 The decisions are not stored by GMRS by default - you should store the decisions
-that you use, along with their agree value. If there's demand we could write the
-decs in the future - but even then they'd have to be updated by the user because
-we can't determine the agree value on the GMRS side.
+that you use and remember their ID for associating resulting interactions with
+them. If there's demand we could write the decs in the future.
 
 ## Baseless mode
 

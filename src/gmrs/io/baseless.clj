@@ -4,8 +4,10 @@
 (defn toy-temp-baseless-io-settings []
   { :option-id :iid, :case-id :uid, :govern-id :gid,
     :inter-id :intid,
-    :dec-option :optid, :dec-case :caseid, :dec-agree :agree,
-    :inter-option :optid, :inter-case :caseid
+    :inter-option :optid, :inter-case :caseid, :inter-rating :rating,
+    :inter-dec-id :decid,
+    :dec-id :decid,
+    :dec-options :optids, :dec-case :caseid,
     :page-size 32 })
 
 ; TODO: later move this to io-setup source file so it's more general
@@ -17,8 +19,8 @@
 (defn toy-temp-baseless-io-setup []
   (let [option-store (atom {}),
         case-store (atom {}),
-        dec-store (atom {}),
         inter-store (atom {}),
+        dec-store (atom {}),
         govern-store (atom {})]
     { :option-gives [(fn [settings & ignored-args]
                        (cycle
@@ -46,9 +48,14 @@
                             (map (fn [item]
                                    [((settings :inter-id) item) item])
                                  new-inters)))]
-      ; FIXME: decs, inters storage model - but probs giving them IDs inevitable
-      :dec-gives [(fn [settings & ignored-args] (vals @dec-store))]
-      :dec-sends [(fn [settings new-decs] (swap! dec-store into new-decs))]
+      :dec-gives [(fn [settings & ignored-args]
+                      (cycle
+                        (partition-all (settings :page-size)
+                                       (vals @dec-store))))]
+      :dec-sends [(fn [settings new-decs] (swap! dec-store into
+                            (map (fn [item]
+                                   [((settings :dec-id) item) item])
+                                 new-decs)))]
       :govern-gives [(fn [settings govern-name] (@govern-store govern-name))]
       :govern-sends [(fn [settings govern-name new-govern]
                        (swap! govern-store assoc govern-name new-govern))] }))

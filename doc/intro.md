@@ -9,23 +9,30 @@ items...) that can be chosen for *cases* (which can usually be understood as
 users of a website or an app, and in some cases called 'queries').
 
 You invoke GMRS to get a ranking of possible options for each case. We call it
-a *decision* - which also involves the decision of the user to accept or
-decline recommendations. Information about the decision (and whether there was
-an user agreement) can be stored and used in later recommendations. Decisions
-can be referred to in the code as "decs".
+a *decision*. Information about the decision can be stored, referenced in later
+interaction records and used in recommendations.
+
+The interactions can later refer to earlier decisions, so we know they are
+responsible for the interactions. This can be useful for calculating
+Click-Through Rate (CTR).
+
+Decisions can be referred to in the code as "decs".
 
 Other *interactions* involving known cases and options can also be retrieved
-to help in the decisions. The interactions can be referred to in the code as
-"inters".
+to help in the decisions. The interactions may also include ratings.
+Interactions can be referred to in the code as "inters".
 
 ### Handling cases, options, interactions
 
-NOTE You need to send at least some of each one in order for the "autogovern"
-mechanism to diagnose the types of data (features) available.
+NOTE You need to send at least some cases and options in order for the
+"autogovern" mechanism to diagnose the types of data (features) available.
 
 ### Governors and mills
 
 ...
+
+Currently mills are always run on demand with the full calculations. This is
+an interim approach which is not efficient.
 
 A mill function gets cases and options and returns options ID along with
 scores for each case. It shouldn't concern itself with sorting. It is columnar

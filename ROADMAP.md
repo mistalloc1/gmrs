@@ -18,6 +18,28 @@
 
 ## Future versions
 
+### For version 0.2.0
+
+#### Milestones
+
+**2.** Provide instructions for including GMRS in web app projects and verify
+they can be used. The initial focus is either Java Spring/Spring Boot ecosystem
+or Clojure backend development (but the aim of the project is to be encapsulated
+enough so it can be used from outside of Clojure).
+
+- This includes having at least somewhat sound API design...
+- ...and basic db connection through JDBC (probably), maybe also some NoSQL.
+- Getting into Maven central could be delayed for until I'm more sure about the project.
+
+#### Work items
+
+- [ ] allow describing cases through their previous interacted options
+- [ ] mill/response caching
+- [ ] setup JDBC driver for gives and sends
+- [ ] create instructions for web Clojure integration
+- [ ] test doing the instructions in a clean environment
+- [ ] see what happens with using instructions when user uses LLM help
+
 ### For version 0.1.0
 
 #### Milestones
@@ -34,15 +56,6 @@ datasets. These are [EDGAR Log Files](https://catalog.data.gov/dataset/edgar-log
 - Handle shape of real world data.
 - We don't have to use all of it, just load and provide some data-driven recommendations.
 
-**2.** Provide instructions for including GMRS in web app projects and verify
-they can be used. The initial focus is either Java Spring/Spring Boot ecosystem
-or Clojure backend development (but the aim of the project is to be encapsulated
-enough so it can be used from outside of Clojure).
-
-- This includes having at least somewhat sound API design...
-- ...and basic db connection through JDBC (probably), maybe also some NoSQL.
-- Getting into Maven central could be delayed for until I'm more sure about the project.
-
 #### Work items
 
 - [x] clean get/get-governor, get/get-options functions as private `defn-`s or separate ns %
@@ -51,24 +64,20 @@ enough so it can be used from outside of Clojure).
 - [x] detect numbers and timestamps in governor, if provided as strings
 - [x] provide a wrapper performing conversions marked by the governor (func composition)
 - [x] handle nils in preprocessing and/or existing mills
-- [x] allow describing cases through their previous interacted options
 - [x] separate mills for nearest options from similar cases (if no interactions)
 - [ ] test the most basic "informed popularity" mill
+- [ ] guided retrieval of interactions, maybe options
 - [x] handle pagination from the gives
 - [x] strategy for consuming the right amount of pages
-- [ ] the method of selecting mills should have passably sound logic
+- [ ] the method of selecting mills should have passably sound logic $
 - [ ] extend preprocessing for handling data from EDGAR
-- [ ] extend preprocessing for handling data from AniD
+- [x] extend preprocessing for handling data from AniD
 - [ ] add some type guards (and replace existing) using Clojure spec
-- [ ] setup JDBC driver for gives and sends
-- [ ] create instructions for web Clojure integration
-- [ ] compare the API for Spring with LLM hallucinations
-- [ ] compare the API for web Clojure with LLM hallucinations
-- [ ] test doing the instructions in a clean environment
-- [ ] see what happens with using instructions when user uses LLM help
 
 % If separate ns, think of discouraging access from anywhere but gmrs.command.
 We need to keep all the other stuff strictly separated. But the usage in
 gmrs.governor (which might be overall) different should also be considered.
 (edit: this is done by keeping the globals that need to be passed as args in the
 command namespace)
+
+$ Cases may not be sufficiently distinguishable to have them as nearest-neighbors.
