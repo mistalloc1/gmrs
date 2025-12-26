@@ -8,7 +8,7 @@ the new features.
 
 ## [Unreleased]
 
-## [0.0.4] - 2025-12-26
+## [0.0.4] - 2025-12-25
 
 ### Added
 
@@ -50,6 +50,7 @@ the new features.
 ## [0.0.1-init] - 2025-07-09
 
 [Unreleased]: ...
+[0.0.4]: 1bff836
 [0.0.3]: d557326
 [0.0.1]: d7b0fa1
 [0.0.1-init]: (initial commit) 27a8787
