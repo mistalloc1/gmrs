@@ -16,6 +16,8 @@
                 {:io-settings io-settings})
               (pages io-settings (map rest gives) cols-subset))))
 
+;; TODO: getters as exposed downstream should be able to receive dataprefs but
+;; also wrap preprocessing transformations
 (defn getter
   ([io-settings gives] (getter io-settings gives nil))
   ([io-settings gives cols-subset]

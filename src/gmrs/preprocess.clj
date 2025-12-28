@@ -1,7 +1,6 @@
-"Operate on semantic data such as data columns to prepare for mills. The
-meaning-agnostic things about reformatting etc. should go into wrangle."
-
 (ns gmrs.preprocess
+  "Operate on semantic data such as data columns to prepare for mills. The
+  meaning-agnostic things about reformatting etc. should go into wrangle."
   (:require [clojure.string :as str :refer [starts-with?]]
             [gmrs.math :as math]
             [gmrs.wrangle :as wrangle]))

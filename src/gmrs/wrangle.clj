@@ -1,7 +1,7 @@
-"Change formats of raw data so it is suitable for different operations. As soon
-as it cares about the meaning of the data, it should go into preprocess."
-
 (ns gmrs.wrangle
+  "Change formats of raw data so it is suitable for different operations. As
+  soon as it cares about the meaning of the data for recommendations, it should
+  go into preprocess."
   (:require [clojure.set :as set]
             [clojure.string :as str]))
 

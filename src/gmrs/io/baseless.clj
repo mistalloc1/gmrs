@@ -1,11 +1,12 @@
-(ns gmrs.io.baseless)
+(ns gmrs.io.baseless
+  (:require [gmrs.io.dataprefs :as prefs]))
 
 ; NOTE: option-id cannot be :score
 (defn toy-temp-baseless-io-settings []
   { :option-id :iid, :case-id :uid, :govern-id :gid,
     :inter-id :intid,
-    :inter-option :optid, :inter-case :caseid, :inter-rating :rating,
-    :inter-dec-id :decid,
+    :inter-option :optid, :inter-case :caseid, :inter-timestamp :time,
+    :inter-rating :rating, :inter-dec-id :decid,
     :dec-id :decid,
     :dec-options :optids, :dec-case :caseid,
     :page-size 32 })
@@ -22,36 +23,24 @@
         inter-store (atom {}),
         dec-store (atom {}),
         govern-store (atom {})]
-    { :option-gives [(fn [settings & ignored-args]
-                       (cycle
-                         (partition-all (settings :page-size)
-                                        (vals @option-store))))]
+    { :option-gives [(prefs/memory-give option-store)]
       :option-sends [(fn [settings new-options]
                        (swap! option-store into
                               (map (fn [item]
                                      [((settings :option-id) item) item])
                                    new-options)))]
-      :case-gives [(fn [settings & ignored-args]
-                     (cycle
-                       (partition-all (settings :page-size)
-                                      (vals @case-store))))]
+      :case-gives [(prefs/memory-give case-store)]
       :case-sends [(fn [settings new-cases]
                      (swap! case-store into
                             (map (fn [item]
                                    [((settings :case-id) item) item])
                                  new-cases)))]
-      :inter-gives [(fn [settings & ignored-args]
-                      (cycle
-                        (partition-all (settings :page-size)
-                                       (vals @inter-store))))]
+      :inter-gives [(prefs/memory-give inter-store)]
       :inter-sends [(fn [settings new-inters] (swap! inter-store into
                             (map (fn [item]
                                    [((settings :inter-id) item) item])
                                  new-inters)))]
-      :dec-gives [(fn [settings & ignored-args]
-                      (cycle
-                        (partition-all (settings :page-size)
-                                       (vals @dec-store))))]
+      :dec-gives [(prefs/memory-give dec-store)]
       :dec-sends [(fn [settings new-decs] (swap! dec-store into
                             (map (fn [item]
                                    [((settings :dec-id) item) item])

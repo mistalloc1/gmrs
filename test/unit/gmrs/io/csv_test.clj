@@ -1,6 +1,5 @@
 (ns gmrs.io.csv-test
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as io]
             [gmrs.io.csv :refer :all]))
 
 (def expected-example

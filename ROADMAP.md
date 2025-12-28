@@ -2,6 +2,7 @@
 
 ## Further out
 
+- use datetime semantics in mills
 - evaluation, using the stored decision data
 - rework CSV funcs to handle different delimiters and dialects
 - perhaps in recommending the gives should be saved and stateful, to go through
@@ -39,6 +40,7 @@ enough so it can be used from outside of Clojure).
 - [ ] create instructions for web Clojure integration
 - [ ] test doing the instructions in a clean environment
 - [ ] see what happens with using instructions when user uses LLM help
+- [ ] add some type guards (and replace existing) using Clojure spec
 
 ### For version 0.1.0
 
@@ -72,7 +74,6 @@ datasets. These are [EDGAR Log Files](https://catalog.data.gov/dataset/edgar-log
 - [ ] the method of selecting mills should have passably sound logic $
 - [ ] extend preprocessing for handling data from EDGAR
 - [x] extend preprocessing for handling data from AniD
-- [ ] add some type guards (and replace existing) using Clojure spec
 
 % If separate ns, think of discouraging access from anywhere but gmrs.command.
 We need to keep all the other stuff strictly separated. But the usage in

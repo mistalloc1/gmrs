@@ -61,6 +61,7 @@ The decisions should implement lists of options recommended for the case.
 #### Interaction meaningful columns
 
 - decision-id - the associated decision ID which resulted in the interaction.
+- timestamp.
 - rating - a number.
 
 ### Keeping track of governors
