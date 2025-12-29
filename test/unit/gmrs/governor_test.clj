@@ -1,6 +1,7 @@
 (ns gmrs.governor-test
   (:require [clojure.test :refer :all]
-            [clojure.string :as str]
+            [gmrs.io.baseless :as bs]
+            [gmrs.io.getters :as get]
             [gmrs.command :as cmd :refer [*EnabledMills*]]
             [gmrs.governor :refer :all]))
 
@@ -62,69 +63,72 @@
                :avg-price 140 :amenities "breakfast|pool|wifi|babysitting"
                :age 38 :travel-purpose "leisure"}])))
 
-
 (def hotel-inter-gives [])
+
+(defn prepared-io-setup []
+  (let [setup (atom (bs/toy-temp-baseless-io-setup))]
+    (swap! setup assoc-in [:option-gives] hotel-option-gives)
+    (swap! setup assoc-in [:case-gives] hotel-case-gives)
+    (swap! setup assoc-in [:inter-gives] hotel-inter-gives)
+    @setup))
 
 ; TODO: test/deal with nils, mixed columns
 (deftest test-diagnose-columns-from-source
-  (is (= {:name #{:str},
-          :country #{:tags :str},
-          :checkin-until #{:str :time-local-needs-conv :time-local},
-          :avg-price #{:int},
-          :amenities #{:str},
-          :row-id #{:int}}
-         (diagnose-columns-from-source hotel-governor
-                                       cmd/*GlobalIOSettings*
-                                       hotel-option-gives))
-      "options")
-  (is (= {:name #{:str},
-          :country #{:tags :str},
-          :checkin-until #{:str :time-local-needs-conv :time-local},
-          :avg-price #{:int},
-          :amenities #{:str},
-          :age #{:int},
-          :travel-purpose #{:tags :str}}
-         (diagnose-columns-from-source hotel-governor
-                                       cmd/*GlobalIOSettings*
-                                       hotel-case-gives))
-      "cases")
-  (is (= ; TODO: {}? check case where it's important in integration
-         []
-         (diagnose-columns-from-source hotel-governor
-                                       cmd/*GlobalIOSettings*
-                                       hotel-inter-gives))
-      "inters (empty)"))
+  (binding [cmd/*GlobalIOSetup* (prepared-io-setup)]
+    (is (= {:name #{:str},
+            :country #{:tags :str},
+            :checkin-until #{:str :time-local-needs-conv :time-local},
+            :avg-price #{:int},
+            :amenities #{:str},
+            :row-id #{:int}}
+           (diagnose-columns-from-source (get/get-options cmd/*GlobalIOSettings*
+                                                          cmd/*GlobalIOSetup*)))
+        "options")
+    (is (= {:name #{:str},
+            :country #{:tags :str},
+            :checkin-until #{:str :time-local-needs-conv :time-local},
+            :avg-price #{:int},
+            :amenities #{:str},
+            :age #{:int},
+            :travel-purpose #{:tags :str}}
+           (diagnose-columns-from-source (get/get-cases cmd/*GlobalIOSettings*
+                                                          cmd/*GlobalIOSetup*)))
+        "cases")
+    (is (= ; TODO: {}? check case where it's important in integration
+           []
+           (diagnose-columns-from-source (get/get-inters cmd/*GlobalIOSettings*
+                                                         cmd/*GlobalIOSetup*)))
+        "inters (empty)")))
 
 (deftest test-update-columns-diagnostics
-  (is (= { :recs-amount 2
-          :score-weakness-tolerance 0.02 :pull-strategy :target-top-heavy
-          :option-columns
-          {:name #{:str},
-           :country #{:tags :str},
-           :checkin-until #{:str :time-local-needs-conv :time-local},
-           :avg-price #{:int},
-           :amenities #{:str},
-           :row-id #{:int}}
-          :case-columns
-          {:name #{:str},
-           :country #{:tags :str},
-           :checkin-until #{:str :time-local-needs-conv :time-local},
-           :avg-price #{:int},
-           :amenities #{:str},
-           :age #{:int},
-           :travel-purpose #{:tags :str}}
-          :inter-columns [] }
-         (update-columns-diagnostics hotel-governor
-                                     cmd/*GlobalIOSettings*
-                                     hotel-option-gives hotel-case-gives
-                                     hotel-inter-gives))))
+  (binding [cmd/*GlobalIOSetup* (prepared-io-setup)]
+    (is (= { :recs-amount 2
+            :score-weakness-tolerance 0.02 :pull-strategy :target-top-heavy
+            :option-columns
+            {:name #{:str},
+             :country #{:tags :str},
+             :checkin-until #{:str :time-local-needs-conv :time-local},
+             :avg-price #{:int},
+             :amenities #{:str},
+             :row-id #{:int}}
+            :case-columns
+            {:name #{:str},
+             :country #{:tags :str},
+             :checkin-until #{:str :time-local-needs-conv :time-local},
+             :avg-price #{:int},
+             :amenities #{:str},
+             :age #{:int},
+             :travel-purpose #{:tags :str}}
+            :inter-columns [] }
+           (update-columns-diagnostics hotel-governor
+                                       cmd/*GlobalIOSettings*
+                                       cmd/*GlobalIOSetup*)))))
 
 (deftest test-choose-and-prepare-mill
   (is (some #{(:mill (choose-and-prepare-mill
                      (update-columns-diagnostics
                        hotel-governor cmd/*GlobalIOSettings*
-                       hotel-option-gives hotel-case-gives
-                       hotel-inter-gives)))}
+                       cmd/*GlobalIOSetup*)))}
             (keys *EnabledMills*))
       "derive a mill from provided data")
   (is (some #{(:mill (choose-and-prepare-mill hotel-governor))}
@@ -133,9 +137,9 @@
 
 (deftest test-autogovern
   (is (some #{(:mill (autogovern
-                       hotel-governor cmd/*GlobalIOSettings*
-                       hotel-option-gives hotel-case-gives
-                       hotel-inter-gives))}
+                       hotel-governor
+                       cmd/*GlobalIOSettings*
+                       cmd/*GlobalIOSetup*))}
             (keys *EnabledMills*))
       "derive a mill from provided data")
   (is (some #{(:mill (choose-and-prepare-mill hotel-governor))}
