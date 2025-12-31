@@ -23,6 +23,8 @@
   "In order for the variable to be usable as tags, the number of unique values
   needs to be less than 2/5 of the whole sample series size, or no more than 3."
   [tags-map full-series-size]
+  ;; TODO: maybe outliers & hapaxes should be excluded and ignored rather than
+  ;; potentially spoil the calculation
   (let [good? (or (<= (count tags-map) 3)
                   (< (* 5 (count tags-map))
                      (* 2 full-series-size)))]

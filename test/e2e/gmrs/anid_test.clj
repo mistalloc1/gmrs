@@ -92,7 +92,7 @@
                    :case-columns #{:Mal-ID :Gender :Completed
                                    :Location :Dropped})]
     (testing "getting the data without preprocessing"
-      (let [options (first (get/get-options cmd/*GlobalIOSettings*
+      (let [options (first (get/options-getter cmd/*GlobalIOSettings*
                                             cmd/*GlobalIOSetup*))]
         ; We expect the columnar format.
         (is (= 6 (count (keys options))))
@@ -102,9 +102,9 @@
       (cmd/autogovern! "anime-recs")
       (let [guvna (get/get-governor cmd/*GlobalIOSettings* cmd/*GlobalIOSetup*
                                     "anime-recs"),
-            case-getter (get/get-cases cmd/*GlobalIOSettings*
+            case-getter (get/cases-getter cmd/*GlobalIOSettings*
                                        cmd/*GlobalIOSetup*),
-            opt-getter (get/get-options cmd/*GlobalIOSettings*
+            opt-getter (get/options-getter cmd/*GlobalIOSettings*
                                         cmd/*GlobalIOSetup*),
             tags-and-transfs (preproc/retag-with-preproc-transforms
                                (:tags-preprocessing guvna)

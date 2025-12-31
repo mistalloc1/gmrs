@@ -56,6 +56,12 @@
            {:ref-date [[`(:after ~(t/new-date 2023 1 1))]],
             :case-id [['(:non-nil)]]}
            example-data))
-      "referencing columns though their IO settings meaning")))
+      "referencing columns though their IO settings meaning")
+  (is (= example-data
+         (filter-with-col-prefs
+           {:case-id :topic}
+           {}
+           example-data))
+      "no filtering with no dataprefs")))
 
 ; (run-tests 'gmrs.io.dataprefs-test)

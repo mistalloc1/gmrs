@@ -77,11 +77,11 @@
   [old-govern io-settings io-setup]
   (merge old-govern
          {:option-columns (diagnose-columns-from-source
-                            (get/get-options io-settings io-setup)),
+                            (get/options-getter io-settings io-setup)),
           :case-columns (diagnose-columns-from-source
-                          (get/get-cases io-settings io-setup)),
+                          (get/cases-getter io-settings io-setup)),
           :inter-columns (diagnose-columns-from-source
-                           (get/get-inters io-settings io-setup))}))
+                           (get/inters-getter io-settings io-setup))}))
 
 (defn choose-and-prepare-mill
   [old-govern]

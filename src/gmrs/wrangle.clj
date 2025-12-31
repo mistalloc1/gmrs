@@ -169,12 +169,25 @@
                      :score >
                      (map (fn [opt-id]
                             { (:option-id (:io-settings
-                                                       (meta scoring-table)))
-                                         opt-id,
-                                         :score (get scoring-table
-                                                     [case-id opt-id]) })
+                                            (meta scoring-table)))
+                             opt-id,
+                             :score (get scoring-table
+                                         [case-id opt-id]) })
                           (get (meta scoring-table) :options))) })
                (get (meta scoring-table) :cases))))
+
+;; TODO: use something like this w/o breaking tests like in nearest-options
+  #_(reduce (fn [accum case-id]
+            (assoc accum case-id
+                   (sort-by
+                     :score >
+                     (map (fn [opt-id]
+                            { (-> (meta scoring-table) :option-id :io-settings)
+                              opt-id,
+                             :score (get scoring-table [case-id opt-id]) })
+                          (get (meta scoring-table) :options)))))
+          {}
+          (get (meta scoring-table) :cases))
 
 (defn top-scorings
   "Only select the top scoring entries for each case from the scoring-table.
@@ -221,8 +234,8 @@
 
 (defn sorted-with-culled-already-interacted
   "From a scoring table, get a map like from sorted-rec-options, but remove
-  the options with which the cases have already interacted. The cases-inters
-  maps case IDs to interaction records."
+  the options with which the cases have already interacted. The cases-inters arg
+  maps case IDs to interaction records (not IDs)."
   [scoring-table cases-inters]
   (assert (or (empty? scoring-table) (:io-settings (meta scoring-table))))
   (let [opt-id-col (:option-id (:io-settings (meta scoring-table))),

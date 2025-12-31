@@ -4,10 +4,11 @@
 
 - use datetime semantics in mills
 - evaluation, using the stored decision data
-- rework CSV funcs to handle different delimiters and dialects
 - perhaps in recommending the gives should be saved and stateful, to go through
   all of the data
 - more datetime formats
+- rework CSV funcs to handle different delimiters and dialects
+- consider removing grouped preprocessing, after we have multiple mills
 
 ### Mills likely to be implemented
 - informed popularity
@@ -60,7 +61,7 @@ datasets. These are [EDGAR Log Files](https://catalog.data.gov/dataset/edgar-log
 
 #### Work items
 
-- [x] clean get/get-governor, get/get-options functions as private `defn-`s or separate ns %
+- [x] clean get/get-governor, get/options-getter functions as private `defn-`s or separate ns %
 - [x] loading CSVs through API
 - [x] sort out the basic dataframe and math dependencies we'll use (for now, see dev-intro)
 - [x] detect numbers and timestamps in governor, if provided as strings

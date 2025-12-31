@@ -1,6 +1,6 @@
 (ns gmrs.io.dataprefs
   "Implement dataprefs - i.e. desired filters we want to use when retrieving
-  data."
+  data. These functions work on data in memory as Clojure objects."
   (:require [clojure.string :as str]
             [tick.core :as t]))
 
@@ -57,19 +57,13 @@
                               col-name (if (str/starts-with? col-spec-str "ref-")
                                          (keyword (subs col-spec-str 4))
                                          (get io-settings col-spec))]
+                          (when (and (seq records)
+                                     (not (contains? (first records) col-name)))
+                           (throw (ex-info
+                                    (str "Cannot find field '" (pr-str col-name)
+                                         " from " col-spec-str "' as col spec")
+                                    { :col-spec-str col-spec-str
+                                      :record (first records) })))
                           (map (prefs-interp prefs)
                                (map col-name records))))
                       col-prefs))))
-
-(defn memory-give
-  "Create an in-memory ('baseless') give function retrieving items from
-  store-atom. If possible, the data will be retrieved that satisfies the prefs
-  (as interpreted by filter-with-prefs and prefs-interp)."
-  [store-atom]
-  (fn [io-settings & prefs]
-    (cycle
-      ;; TODO: what happens to partition-all if the atom value changes?
-      (partition-all (io-settings :page-size)
-                     (or (seq (filter-with-col-prefs io-settings prefs
-                                                     (vals @store-atom)))
-                         (seq (vals @store-atom)))))))

@@ -272,7 +272,8 @@
                :checkin-until #{:str} }
              { :country #{:tags :str :group-123},
                :checkin-until #{:str :needs-conv :time-local} }]
-            [hotel-cases hotel-options])
+            [hotel-cases hotel-options]
+            [:name :name])
         grouped-taggings (:set-taggings tags-and-transfs),
         tags-table (:tags-table tags-and-transfs)]
     (is (= #{:tags :str :group-123}
@@ -313,7 +314,8 @@
              { :io-settings { :iid "item id" :uid "user id"} }),
            (with-meta
              hotel-options
-             { :hello "goodbye" })]),
+             { :hello "goodbye" })]
+          [:name :name]),
         prepr-cases (first preprocessed),
         prepr-options (second preprocessed)]
     (testing "metadata preservation"
@@ -323,11 +325,13 @@
       (is (= (meta prepr-options)
              { :hello "goodbye" })
           "preprocessed options metadata"))
+    (testing "id columns left as they were"
+      (is (= (:name hotel-cases) (get prepr-cases :name)))
+      (is (= (:name hotel-options) (get prepr-options :name))))
     (testing "skipping columns with no preprocessing"
       (is (not (get prepr-cases :amenities)))
       (is (not (get prepr-options :amenities)))
-      (is (not (get prepr-cases :checkin-until)))
-      (is (not (get prepr-options :name))))
+      (is (not (get prepr-cases :checkin-until))))
     (testing "number columns"
       (is (every? float? (:avg-price prepr-cases))
           "Number column mapped into a float scale when requested")
@@ -361,12 +365,14 @@
              :avg-price #{:int :number-scale} }
            { :country #{:tags :str :group-123},
              :checkin-until #{:str :needs-conv :time-local} }]
-          [hotel-cases hotel-options]),
+          [hotel-cases hotel-options]
+          [:name :name]),
         grouped-taggings (:set-taggings tags-and-transfs),
         grouped-tags-table (:tags-table tags-and-transfs),
         preprocessed (execute-preprocessing-instructions
                        grouped-tags-table grouped-taggings
-                       [hotel-cases hotel-options]),
+                       [hotel-cases hotel-options]
+                       [:name :name]),
         prepr-cases (first preprocessed),
         prepr-options (second preprocessed)]
     (is (= (vec ((.execute ZLogisticScale)
@@ -376,10 +382,12 @@
         "The correct scaling function applied")
     (is (= [0.0 0.0 0.0 0.0 0.0]
            (:country-Sweden prepr-options)))
+    (testing "id columns left as they were"
+      (is (= (:name hotel-cases) (get prepr-cases :name)))
+      (is (= (:name hotel-options) (get prepr-options :name))))
     (testing "skipping columns with no preprocessing"
       (is (not (get prepr-cases :amenities)))
       (is (not (get prepr-options :amenities)))
-      (is (not (get prepr-cases :checkin-until)))
-      (is (not (get prepr-options :name))))))
+      (is (not (get prepr-cases :checkin-until))))))
 
 ; (run-tests 'gmrs.preprocess-test)

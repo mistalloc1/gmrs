@@ -117,11 +117,13 @@
       (let [new-inters (wrangle/cols-as-rows
                          (first gettable-inters)), ; expected to be to cases
             new-case-inters (reduce
-                              (fn [m inter]
-                                (if (get m (inter-case inter))
-                                  (update m (inter-case inter)
+                              (fn [cs-int-acc inter]
+                                (if (get cs-int-acc (inter-case inter))
+                                  ;; Add for the case if it's one of the target
+                                  ;; cases.
+                                  (update cs-int-acc (inter-case inter)
                                           (fn [old] (conj old inter)))
-                                  m))
+                                  cs-int-acc))
                               case-inters new-inters),
             only-relevant-inters
             (wrangle/records-as-cols
@@ -140,14 +142,22 @@
            ;; More options needed - either 0 or all used for recommendations
            (= (count (:options (meta recommendations)))
               (wrangle/cols-row-count options)))
-      (let [more-opts (first gettable-options)]
-        (tap> {:last-step last-step, :current-step :more-options,
-               :new-data more-opts :place :nn-from-inters})
-        (recur cases (wrangle/stack options more-opts) inters
-               (rest gettable-options) gettable-inters
-               case-inters
-               partial-pull-strat (inc step-number) :more-options
-               recommendations))
+      (let [more-opts (first gettable-options),
+            all-opts (wrangle/stack options more-opts)]
+        (if (empty? (dissoc all-opts option-id))
+          (do
+            (tap> {:last-step last-step, :current-step :more-options,
+                   :new-data more-opts :place :nn-from-inters
+                   :end-reason "no meaningful options features"})
+            recs-excluding-existing-inters)
+          (do
+            (tap> {:last-step last-step, :current-step :more-options,
+                 :new-data more-opts :place :nn-from-inters})
+            (recur cases all-opts inters
+                   (rest gettable-options) gettable-inters
+                   case-inters
+                   partial-pull-strat (inc step-number) :more-options
+                   recommendations))))
 
       ;; Can recommend more
       (and continue? (not= last-step :more-recs)
@@ -345,22 +355,23 @@
   "Look at the cases and determine which ones can get recommendations from
   similar options to their interactions, and which (with little interactions)
   have to get recommended options from hopefully similar cases."
-  [cases options inters gettable-cases gettable-options gettable-inters
+  [cases cases-getter-partial options-getter-partial inters-getter-partial
    pull-strategy]
-  ;; TODO: heuristic of getting two pages of inters, kinda weak
+  ;; TODO: heuristic of getting five pages of inters, kinda weak
   (assert (:io-settings (meta cases)))
-  (let [more-inters (wrangle/stack inters (first gettable-inters)),
-        case-ids-with-inters (interacted-cases-mask
-                               cases
-                               (wrangle/stack inters more-inters))]
+  (let [gettable-cases (cases-getter-partial),
+        gettable-options (options-getter-partial),
+        gettable-inters (inters-getter-partial),
+        test-inters (apply wrangle/stack (take 5 gettable-inters)),
+        case-ids-with-inters (interacted-cases-mask cases test-inters)]
     (merge
       (nearest-options-from-cases-mill
         (wrangle/cols-from-row-mask cases (map not case-ids-with-inters))
-        options more-inters
+        {} test-inters
         gettable-cases gettable-options gettable-inters
         pull-strategy)
       (nearest-options-from-interactions-mill
         (wrangle/cols-from-row-mask cases case-ids-with-inters)
-        options more-inters
+        {} test-inters
         gettable-cases gettable-options gettable-inters
         pull-strategy))))

@@ -27,8 +27,10 @@
       "high recommendation cost but after many pulls"))
 
 (def hotel-option-gives
-  (map (fn [source] (fn [io-settings]
+  (map (fn [source] (fn [io-settings & prefs]
                       (partition-all (io-settings :page-size) source)))
+       ;; Each of the sub-vectors is meant to supply one "give" and is paginated
+       ;; above.
        (list [{:name "Dump Hotel" :country "USA" :checkin-until "20:00"
                :avg-price 20 :amenities "vending machine" :row-id 5}
               {:name "Hilton Hotel" :country "USA" :checkin-until "24:00"
@@ -42,7 +44,7 @@
                :row-id 16}])))
 
 (def hotel-case-gives
-  (map (fn [source] (fn [io-settings]
+  (map (fn [source] (fn [io-settings & prefs]
                       (partition-all (io-settings :page-size) source)))
        (list [{:name "John Smith" :country "USA" :checkin-until "22:00"
                :avg-price 180 :amenities "pool|wifi|pet-friendly" :age 34
@@ -81,8 +83,9 @@
             :avg-price #{:int},
             :amenities #{:str},
             :row-id #{:int}}
-           (diagnose-columns-from-source (get/get-options cmd/*GlobalIOSettings*
-                                                          cmd/*GlobalIOSetup*)))
+           (diagnose-columns-from-source (get/options-getter
+                                           cmd/*GlobalIOSettings*
+                                           cmd/*GlobalIOSetup*)))
         "options")
     (is (= {:name #{:str},
             :country #{:tags :str},
@@ -91,13 +94,15 @@
             :amenities #{:str},
             :age #{:int},
             :travel-purpose #{:tags :str}}
-           (diagnose-columns-from-source (get/get-cases cmd/*GlobalIOSettings*
-                                                          cmd/*GlobalIOSetup*)))
+           (diagnose-columns-from-source (get/cases-getter
+                                           cmd/*GlobalIOSettings*
+                                           cmd/*GlobalIOSetup*)))
         "cases")
     (is (= ; TODO: {}? check case where it's important in integration
            []
-           (diagnose-columns-from-source (get/get-inters cmd/*GlobalIOSettings*
-                                                         cmd/*GlobalIOSetup*)))
+           (diagnose-columns-from-source (get/inters-getter
+                                           cmd/*GlobalIOSettings*
+                                           cmd/*GlobalIOSetup*)))
         "inters (empty)")))
 
 (deftest test-update-columns-diagnostics
@@ -126,9 +131,9 @@
 
 (deftest test-choose-and-prepare-mill
   (is (some #{(:mill (choose-and-prepare-mill
-                     (update-columns-diagnostics
-                       hotel-governor cmd/*GlobalIOSettings*
-                       cmd/*GlobalIOSetup*)))}
+                       (update-columns-diagnostics
+                         hotel-governor cmd/*GlobalIOSettings*
+                         cmd/*GlobalIOSetup*)))}
             (keys *EnabledMills*))
       "derive a mill from provided data")
   (is (some #{(:mill (choose-and-prepare-mill hotel-governor))}

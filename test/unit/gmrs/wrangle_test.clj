@@ -199,19 +199,23 @@
                                            cases-to-options)))))
 
 (deftest test-sorted-with-culled-already-interacted
-  (is { :case-1 [] :case-2 [{ :opt-id :opt-2 :score 0.7 }] }
-      (sorted-with-culled-already-interacted
-        (with-meta
-          { [:case-1 :opt-2] 0.7, [:case-1 :opt-3] 0.3,
-            [:case-2 :opt-2] 0.7, [:case-2 :opt-3] 0.5 }
-          { :cases [:case-1 :case-2] :options [:opt-2 :opt-3]
-            :io-settings
-            { :option-id :opt-id :inter-case :cs :inter-option :op
-              :inter-id :id} })
-        { :case-1 (map (fn [o] {:cs :case-1 :op o :id (str o "-1") })
-                       [:opt-1 :opt-2 :opt-3])
-          :case-2 (map (fn [o] {:cs :case-2 :op o :id (str o "-1") })
-                       [:opt-3]) })))
+  (is (= { :case-1 [] :case-2 [{ :opt-id :opt-2 :score 0.7 }] }
+         (sorted-with-culled-already-interacted
+           (with-meta
+             { [:case-1 :opt-2] 0.7, [:case-1 :opt-3] 0.3,
+               [:case-2 :opt-2] 0.7, [:case-2 :opt-3] 0.5 }
+             { :cases [:case-1 :case-2]
+               :options [:opt-2 :opt-3]
+               :io-settings
+               { :option-id :opt-id :inter-case :cs :inter-option :op
+                 :inter-id :id } })
+           ;; Case 1 interacts with everything (so no recs), case 2 only with
+           ;; opt-3.
+           { :case-1 (map (fn [o iid] {:cs :case-1 :op o :id iid })
+                          [:opt-1 :opt-2 :opt-3] ["i1-1" "i1-2" "i1-3"])
+             :case-2 (map (fn [o iid] {:cs :case-2 :op o :id iid })
+                          [:opt-3] ["i2-1"]) }))
+      "simple case"))
 
 (deftest test-keywordify
   (is (= [:dill :dandelion :daisy]

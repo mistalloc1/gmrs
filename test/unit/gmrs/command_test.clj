@@ -19,7 +19,7 @@
    {:id 130 :name "Cat" :danger "high" :time "1999-12-09" :temperature 38}
    {:id 140 :name "Snail" :danger "low" :time "2020-02-30" :temperature 28}
    {:id 175 :name "Pigeon" :danger "medium" :time "2011-07-22" :temperature 42}
-   {:id 200 :name "Octopus" :danger "uncertain" :time "2017-11-05" :temperature 12}
+   {:id 200 :name "Octopus" :danger "medium" :time "2017-11-05" :temperature 12}
    {:id 245 :name "Squirrel" :danger "medium" :time "2008-05-19" :temperature 38}
    {:id 310 :name "Ferret" :danger "low" :time "2014-09-13" :temperature 39}
    {:id 360 :name "Moose" :danger "high" :time "1995-01-27" :temperature 38}])
@@ -30,7 +30,6 @@
    {:id 2140 :name "Zoltan" :danger "low" :city "Budapest"}
    {:id 2200 :name "Csilla" :danger "low" :city "Debrecen"}])
 
-;; TODO: should be colsets? - probably not as it's user facing API
 (def example-inters
   [{:id "inter1", :case-id 1190 :option-id 130}
    {:id "inter2", :case-id 1190, :option-id 175}
@@ -61,44 +60,38 @@
                                  "test-guvna"))
         :nearest-options)))
 
-(deftest test-integr-send-and-get-options
+(deftest test-integr-send-and-options-getter
   (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
             *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
                                       :option-id :id)]
     (send-options! example-options)
     (is (= (sort-by :id example-options)
            (sort-by :id (wrangle/cols-as-rows
-                          (first (get/get-options *GlobalIOSettings*
+                          (first (get/options-getter *GlobalIOSettings*
                                                   *GlobalIOSetup*)))))
         "getting previously sent options")))
 
-(deftest test-integr-send-and-get-cases
+(deftest test-integr-send-and-cases-getter
   (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
             *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
                                       :case-id :id)]
     (send-cases! example-cases)
     (is (= (sort-by :id example-cases)
            (sort-by :id (wrangle/cols-as-rows
-                          (first (get/get-cases *GlobalIOSettings*
+                          (first (get/cases-getter *GlobalIOSettings*
                                                 *GlobalIOSetup*)))))
         "getting previously sent cases")))
 
-(deftest test-integr-send-and-get-inters
+(deftest test-integr-send-and-inters-getter
   (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),
             *GlobalIOSettings* (assoc (bs/toy-temp-baseless-io-settings)
                                       :inter-id :id)]
     (send-interactions! example-inters)
     (is (= (sort-by :id example-inters)
            (sort-by :id (wrangle/cols-as-rows
-                          (first (get/get-inters *GlobalIOSettings*
+                          (first (get/inters-getter *GlobalIOSettings*
                                                  *GlobalIOSetup*)))))
         "getting previously sent inters")))
-
-(deftest test-restore-ids-to-feats
-  (is (= {:a [45 45] :b [12 45] :id ["a" "b"]}
-         (restore-ids-to-feats {:a [45 45] :b [12 45]}
-                               :id
-                               {:a [0.45 0.45] :b [0.12 0.45] :id ["a" "b"]}))))
 
 (deftest test-integr-recommend-to
   (binding [*GlobalIOSetup* (bs/toy-temp-baseless-io-setup),

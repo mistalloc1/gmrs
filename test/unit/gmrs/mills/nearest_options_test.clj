@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [gmrs.mills.nearest-options :refer :all]
             [gmrs.preprocess :as preproc]
-            [gmrs.wrangle :as wrangle]
-            [gmrs.command :refer [restore-ids-to-feats]]))
+            [gmrs.wrangle :as wrangle]))
 
 (defn close? [tolerance x y]
   (< (Math/abs (double (- x y))) tolerance))
@@ -64,7 +63,8 @@
                              :name [:str]},
                             {:genres [:tags :str :group-g],
                              :venue-name [:str]}]
-            [example-cases example-options]),
+            [example-cases example-options]
+            [:name :venue-name]),
           recs
           (wrangle/sorted-rec-options
             (nearest-options-scoring
@@ -101,7 +101,8 @@
                             {:genres [:tags :str :group-g],
                              :city [:tags :str :group-c],
                              :venue-name [:str]}]
-            [example-cases example-options]),
+            [example-cases example-options]
+            [:name :venue-name]),
           recs
           (wrangle/sorted-rec-options
             (nearest-options-scoring
@@ -139,7 +140,8 @@
                              :city [:tags :str :group-c]
                              :volume [:int :number-scale :group-v],
                              :venue-name [:str]}]
-            [example-cases example-options]),
+            [example-cases example-options]
+            [:name :venue-name]),
           recs
           (wrangle/sorted-rec-options
             (nearest-options-scoring
@@ -266,15 +268,12 @@
 
 (defn mock-pull-strat [_ step-n] (< step-n 15))
 
-(defn make-getter [prepr-items orig-items-with-ids]
-  (map (fn [row-page page-ids]
+(defn make-getter [prepr-items]
+  (map (fn [row-page]
          (with-meta
-           (restore-ids-to-feats
-             (wrangle/records-as-cols row-page)
-             :name {:name page-ids})
-           (meta orig-items-with-ids)))
-       (partition-all 2 (wrangle/cols-as-rows prepr-items))
-       (partition-all 2 (:name orig-items-with-ids))))
+           (wrangle/records-as-cols row-page)
+           (meta prepr-items)))
+       (partition-all 2 (wrangle/cols-as-rows prepr-items))))
 
 (deftest test-nearest-options-from-interactions-mill
   (let [cases-and-options
@@ -284,23 +283,20 @@
                           {:amenities [:tags :str],
                            :country [:tags :str],
                            :avg-price [:number-scale]}]
-          [hotel-cases hotel-options]),
+          [hotel-cases hotel-options]
+          [:name :name]),
         cases (wrangle/cols-from-row-mask
-                (restore-ids-to-feats
-                  (first cases-and-options)
-                  :name hotel-cases)
+                (first cases-and-options)
                 ;; select only the ones to which we gave interactions
                 [false true false true true false]),
-        options (restore-ids-to-feats
-                  (second cases-and-options)
-                  :name hotel-options),
+        options (second cases-and-options),
         recs (nearest-options-from-interactions-mill
                cases {}
                { :inter-id [3], :person-name ["Marie Leroy"],
                 :hotel-name ["Dump Hotel"] }
                ;; construct getters for cases, options and inters
-               (make-getter cases hotel-cases)
-               (make-getter options hotel-options)
+               (make-getter cases)
+               (make-getter options)
                (map wrangle/records-as-cols
                     (partition-all 2 (wrangle/cols-as-rows hotel-inters)))
                mock-pull-strat)]
@@ -319,33 +315,30 @@
         "the option should be matched because of breakfast tag")))
 
 (deftest test-nearest-options-from-cases-mill
-  (let [prepr-cases
-        (preproc/execute-preprocessing-instructions
+  (let [cases-premask
+        (first (preproc/execute-preprocessing-instructions
           tag-processing [{:amenities [:tags :str],
                            :avg-price [:number-scale]}]
-          [hotel-cases]),
-        prepr-options (preproc/execute-preprocessing-instructions
+          [hotel-cases] [:name])),
+        ;; For the target cases as well we need to manually do the preprocessing
+        ;; which would be handled by gmrs.command/recommend-to.
+        cases (wrangle/cols-from-row-mask
+                cases-premask
+                ;; Select John Smith, Marie Leroy and Anna Lindqvist
+                [true false false true false true]),
+        options (preproc/execute-preprocessing-instructions
                         tag-processing [{:amenities [:tags :str],
                                          :country [:tags :str],
                                          :avg-price [:number-scale]}]
-                        [hotel-options]),
-        cases (wrangle/cols-from-row-mask
-                (restore-ids-to-feats
-                  (first prepr-cases)
-                  :name hotel-cases)
-                ;; Select John Smith, Marie Leroy and Anna Lindqvist
-                [true false false true false true]),
-        options (restore-ids-to-feats
-                  (first prepr-options)
-                  :name hotel-options),
+                        [hotel-options] [:name]),
         recs (nearest-options-from-cases-mill
                cases {}
                { :inter-id [3 4],
                  :person-name ["Marie Leroy" "Sarah Johnson"],
                  :hotel-name ["Dump Hotel" "Hilton Hotel"] }
                ;; construct getters for cases, options and inters
-               (make-getter (first prepr-cases) hotel-cases)
-               (make-getter options hotel-options)
+               (make-getter cases-premask)
+               (make-getter options)
                (map wrangle/records-as-cols
                     (partition-all 2 (wrangle/cols-as-rows hotel-inters)))
                mock-pull-strat)]

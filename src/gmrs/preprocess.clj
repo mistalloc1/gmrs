@@ -179,9 +179,11 @@
 
 (defn get-groups-to-ready-transfs
   "Get a mapping of groups to functions combining all necessary preprocessing,
-  already fitted to the data supplied in the col-sets. Args are similar to
-  retag-with-preproc-transforms and execute-preprocessing-instructions, along
-  with output of get-col-groups on the set-taggings.
+  fitted to the data supplied in the col-sets.
+
+  Args are similar to retag-with-preproc-transforms and
+  execute-preprocessing-instructions. Col-groups should be the output of
+  get-col-groups on the set-taggings.
 
   If a group cannot be preprocessed, it will be skipped in the output and a
   warning may appear in tap> if this is due to a transformation error."
@@ -260,12 +262,14 @@
   to already prepared transformation funcs, already combining the relevant
   .execute fields of PreprocessingTransform records and results from their
   .prepare fields."
-  [tags-table set-taggings col-sets]
+  [tags-table set-taggings col-sets id-cols]
   (let [col-groups (get-col-groups set-taggings),
-        groups-to-transfs (get-groups-to-ready-transfs tags-table
-                                                       set-taggings
-                                                       col-sets
-                                                       col-groups),
+        groups-to-transfs (get-groups-to-ready-transfs
+                            tags-table
+                            set-taggings
+                            (map (fn [s id] (dissoc s id))
+                                 col-sets id-cols)
+                            col-groups),
         new-col-taggings
         (fn [group-name col-entries]
           (reduce into {}
@@ -291,24 +295,30 @@
                                                       (vals col-groups)))) }))
 
 (defn execute-preprocessing-instructions
-  "Apply all functions from tags-table to the columns in col-sets, that are
-  indicated by tags in the set-taggings which map column names to data type tags.
+  "Apply all transformation functions from tags-table to the columns in
+  col-sets. The cols are mapped to transformations with the help of set-taggings
+  which map column names to data type tags.
 
-  Columns with no tags or no preprocessing will be skipped in the output.
+  The metadata of original col-sets will be preserved.
 
+  id-cols is a sequence of ID columns for each of the col-sets, which will be
+  preserved with no preprocessing.
+
+  Other columns with no tags or no preprocessing will be skipped in the output.
+
+  ## Grouped processing
   Special tags in the form of :group-XYZ guarantee that all cols tagged this
   way will be seamlessly preprocessed together - for example for encoding tags
   or scaling number features.
 
-  The preprocessing functions get the column sequence as their argument. They
-  can return either the resulting vector, or a map of :proc-X -> vector, which
-  will then all be renamed to :col-name-X in the final col-sets.
-
   If a group cannot be preprocessed, it will be skipped in the output and a
   warning may appear in tap> if this is due to a transformation error.
 
-  The metadata of original col-sets will be preserved."
-  [tags-table set-taggings col-sets]
+  ## Multi-column returns from transformations
+  The preprocessing functions get the column sequence as their argument. They
+  can return either the resulting vector, or a map of :proc-X -> vector, which
+  will then all be renamed to :col-name-X in the final col-sets."
+  [tags-table set-taggings col-sets id-cols]
   (letfn [(unroll-col-group [accum-col-sets group-col-entries]
             (reduce
               (fn [group-col-sets {:keys [col-name set-n done]}]
@@ -335,62 +345,71 @@
                     (mapv (fn [col-set] (with-meta {} (meta col-set)))
                           col-sets)
                     groups))]
-    ;; Here, the preprocessed data will be organized by the groups - allowing
-    ;; them to be processed together. The columns will be placed in the correct
-    ;; col-set in (unroll-col-group).
-    (unroll-col-groups
-      (filter
-        some?
-        (map
-          (fn [[group-name group]]
-            (let [all-cols (map (fn [{:keys [col-name set-n]}]
-                                  (get (nth col-sets set-n)
-                                       col-name))
-                                group),
-                  starts-in-lump (reductions + 0 (map count all-cols))
-                  set-indices-in-lump (map vector
-                                           (butlast starts-in-lump)
-                                           (rest starts-in-lump)),
-                  cols-lumped (apply concat all-cols),
-                  processed (reduce
-                              (fn [coll transf]
-                                (when *debug-preproc-exceptions*
-                                  (println "Preprocessing" group-name
-                                           "- transform:" transf))
-                                ;; transform if there's a defined transf,
-                                ;; otherwise nil the col
-                                (if transf (transf coll) nil))
-                              cols-lumped
-                              ;; Get tags and make them into a
-                              ;; transformations list to be reduced.
-                              (longer
-                                (list nil)
-                                (filter
-                                  some?
-                                  (map (fn [tag]
-                                         (let [transf (get tags-table tag)]
-                                           (cond
-                                             (nil? transf) nil
-                                             (instance? PreprocessingTransform
-                                                        transf)
-                                             (partial quick-transform transf)
-                                             :else transf)))
-                                       ;; get the tags for these columns
-                                       ;; NOTE: tags must be the same for every
-                                       ;; column! (that's why we can take the
-                                       ;; first entry of the group)
-                                       (get (nth set-taggings
-                                                 (-> group first :set-n))
-                                            (-> group first :col-name))))))]
-              (when processed
-                (map-indexed (fn [i entry]
-                               (assoc entry :done
-                                      ;; to the group entry, add the :done part
-                                      ;; of the lumped column vector
-                                      (apply wrangle/slice
-                                             (into [processed]
-                                                   (nth set-indices-in-lump i)))))
-                             group))))
-          ;; "a map of group keys to group entries (which are maps of :col-name
-          ;; and :set-n)"
-          (get-col-groups set-taggings))))))
+    (map
+      (fn [orig-col-set col-id-col prepr-col-set]
+        (assoc prepr-col-set col-id-col
+               (col-id-col orig-col-set)))
+      col-sets
+      id-cols
+      ;; Here, the preprocessed data will be organized by the groups - allowing
+      ;; them to be processed together. The columns will be placed in the correct
+      ;; col-set in (unroll-col-group).
+      (unroll-col-groups
+        (filter
+          some?
+          (map
+            ;; Preprocess each group together.
+            (fn [[group-name group]]
+              (let [all-cols (map (fn [{:keys [col-name set-n]}]
+                                    (get (nth col-sets set-n)
+                                         col-name))
+                                  group),
+                    starts-in-lump (reductions + 0 (map count all-cols))
+                    set-indices-in-lump (map vector
+                                             (butlast starts-in-lump)
+                                             (rest starts-in-lump)),
+                    cols-lumped (apply concat all-cols),
+                    processed (reduce
+                                (fn [coll transf]
+                                  (when *debug-preproc-exceptions*
+                                    (println "Preprocessing" group-name
+                                             "- transform:" transf))
+                                  ;; transform if there's a defined transf,
+                                  ;; otherwise nil the col
+                                  (if transf (transf coll) nil))
+                                cols-lumped
+                                ;; Get tags and make them into a
+                                ;; transformations list to be reduced.
+                                (longer
+                                  (list nil)
+                                  (filter
+                                    some?
+                                    (map (fn [tag]
+                                           (let [transf (get tags-table tag)]
+                                             (cond
+                                               (nil? transf) nil
+                                               ;; checking if
+                                               ;; PreprocessingTransform instance
+                                               ;;isn't reliable between code reloads
+                                               (func? transf) transf
+                                               :else (partial
+                                                       quick-transform transf))))
+                                         ;; get the tags for these columns
+                                         ;; NOTE: tags must be the same for every
+                                         ;; column! that's why we can take the
+                                         ;; first entry of the group
+                                         (get (nth set-taggings
+                                                   (-> group first :set-n))
+                                              (-> group first :col-name))))))]
+                (when processed
+                  (map-indexed (fn [i entry]
+                                 (assoc entry :done
+                                        ;; to the group entry, add the :done part
+                                        ;; of the lumped column vector
+                                        (apply wrangle/slice
+                                               (into [processed]
+                                                     (nth set-indices-in-lump i)))))
+                               group))))
+            ;; "a map of group keys to group entries, which are maps of :col-name
+            ;; and :set-n)"
+            (get-col-groups set-taggings)))))))
