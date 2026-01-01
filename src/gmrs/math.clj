@@ -6,6 +6,9 @@
     [uncomplicate.neanderthal.vect-math :as ndv]
     [uncomplicate.neanderthal.native :refer [dv]]))
 
+;; A random function behaving like Clojure rand.
+(def ^:dynamic *gmrs-random* rand)
+
 (defn cosine-similarity
   [coll1 coll2]
   (let [a (dv coll1),

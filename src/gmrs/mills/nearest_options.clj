@@ -356,7 +356,7 @@
   similar options to their interactions, and which (with little interactions)
   have to get recommended options from hopefully similar cases."
   [cases cases-getter-partial options-getter-partial inters-getter-partial
-   pull-strategy]
+   decs-getter-partial pull-strategy]
   ;; TODO: heuristic of getting five pages of inters, kinda weak
   (assert (:io-settings (meta cases)))
   (let [gettable-cases (cases-getter-partial),

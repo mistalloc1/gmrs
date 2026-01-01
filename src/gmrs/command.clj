@@ -6,8 +6,7 @@
             [gmrs.io.baseless :as bs]
             [gmrs.io.getters :as get]
             [gmrs.preprocess :as preproc]
-            [gmrs.mills.informed-popularity
-             :refer [informed-popularity-recommend]]
+            [gmrs.mills.informed-popularity :refer [random-option-mill]]
             [gmrs.mills.nearest-options :refer [nearest-options-type-mill]])
   (:gen-class))
 
@@ -15,7 +14,7 @@
 (def ^:dynamic *GlobalIOSetup* (bs/toy-temp-baseless-io-setup))
 
 (def ^:dynamic *EnabledMills*
-  { :informed-popularity informed-popularity-recommend
+  { :informed-popularity random-option-mill
     :nearest-options nearest-options-type-mill })
 
 (def ^:dynamic *MillAcceptedColumnAttrs*
@@ -127,6 +126,8 @@
      (partial get/options-getter *GlobalIOSettings* *GlobalIOSetup*
               #(first (preprocess-exec (drop 1 set-taggings) [%] [opt-id-col])))
      (partial get/inters-getter *GlobalIOSettings* *GlobalIOSetup*
+              identity)
+     (partial get/decs-getter *GlobalIOSettings* *GlobalIOSetup*
               identity)
      (partial pull-strat govern)]))
 

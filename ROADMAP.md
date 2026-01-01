@@ -42,6 +42,7 @@ enough so it can be used from outside of Clojure).
 - [ ] test doing the instructions in a clean environment
 - [ ] see what happens with using instructions when user uses LLM help
 - [ ] add some type guards (and replace existing) using Clojure spec
+- [ ] allow to set global maximum option age for any mill
 
 ### For version 0.1.0
 

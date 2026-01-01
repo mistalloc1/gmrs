@@ -65,3 +65,11 @@
    (inters-getter io-settings io-setup preproc-fun {}))
   ([io-settings io-setup preproc-fun dataprefs]
    (getter io-settings (:inter-gives io-setup) nil dataprefs preproc-fun)))
+
+(defn decs-getter
+  "Lazy sequence of decision pages (combining a page from each give)."
+  ([io-settings io-setup] (decs-getter io-settings io-setup identity {}))
+  ([io-settings io-setup preproc-fun]
+   (decs-getter io-settings io-setup preproc-fun {}))
+  ([io-settings io-setup preproc-fun dataprefs]
+   (getter io-settings (:dec-gives io-setup) nil dataprefs preproc-fun)))
