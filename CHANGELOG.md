@@ -8,6 +8,17 @@ the new features.
 
 ## [Unreleased]
 
+### Added
+
+- Dataprefs - gives can be guided on which data filters we prefer to apply.
+- "Informed popularity" mills implemented: random option recommendations, CTR
+  based recommendations.
+
+### Changed
+
+- Getter functions (for getting data from IO gives) reworked to incorporate
+  dataprefs and preprocessing.
+
 ## [0.0.4] - 2025-12-25
 
 ### Added

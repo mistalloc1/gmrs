@@ -31,9 +31,6 @@ NOTE You need to send at least some cases and options in order for the
 
 ...
 
-Currently mills are always run on demand with the full calculations. This is
-an interim approach which is not efficient.
-
 A mill function gets cases and options and returns options ID along with
 scores for each case. It shouldn't concern itself with sorting. It is columnar
 in a way, because the format is case IDs as columns and map of option ID and
