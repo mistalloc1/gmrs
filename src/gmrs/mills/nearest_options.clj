@@ -3,8 +3,8 @@
     [clojure.spec.alpha :as s]
     [clojure.set :refer [subset?]]
     [gmrs.math :as math]
-    [gmrs.wrangle :as wrangle]))
-
+    [gmrs.wrangle :as wrangle]
+    [gmrs.mills.scoring-tables :as scot]))
 
 (s/def ::no-nils (s/coll-of some?))
 
@@ -104,8 +104,8 @@
         inter-option (io-settings :inter-option),
         inter-case (io-settings :inter-case),
         recs-excluding-existing-inters
-        (wrangle/sorted-with-culled-already-interacted recommendations
-                                                       case-inters),
+        (scot/sorted-with-culled-already-interacted recommendations
+                                                    case-inters),
         continue? (partial-pull-strat
                     recs-excluding-existing-inters
                     step-number)]
@@ -183,7 +183,7 @@
                                                  conj (inter-option inter)))
                                        {}
                                        (wrangle/cols-as-rows inters)),
-                   case-recs (wrangle/options-to-cases-scoring-table
+                   case-recs (scot/options-to-cases-scoring-table
                                opt-recs case-opts)]
                (tap> {:last-step last-step, :current-step :more-recs,
                       :new-data case-recs :place :nn-from-inters})
@@ -208,6 +208,7 @@
   similar to the target ones.
 
   Case-similarities is a scoring table comparing target cases to aux-cases."
+  ;; FIXME: not really a mill call structure according to the current convention
   ([cases options inters gettable-cases gettable-options gettable-inters
     partial-pull-strat]
    (if (pos? (wrangle/cols-row-count cases))
@@ -231,8 +232,8 @@
         inter-option (io-settings :inter-option),
         inter-case (io-settings :inter-case),
         recs-excluding-existing-inters
-        (wrangle/sorted-with-culled-already-interacted recommendations
-                                                       case-inters),
+        (scot/sorted-with-culled-already-interacted recommendations
+                                                    case-inters),
         continue? (partial-pull-strat
                     recs-excluding-existing-inters
                     step-number)]
@@ -253,7 +254,7 @@
                   (zero? (mod step-number 5))
                   (some neg?
                         (vals
-                          (wrangle/top-scorings case-similarities))))))
+                          (scot/top-scorings case-similarities))))))
       (let [more-cases (first gettable-cases)]
         (tap> {:last-step last-step, :current-step :more-cases,
                :new-data more-cases :place :nn-from-cases})

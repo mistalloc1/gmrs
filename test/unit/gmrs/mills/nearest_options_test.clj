@@ -3,7 +3,8 @@
             [gmrs.mills.nearest-options :refer :all]
             [gmrs.test-commons :refer :all]
             [gmrs.preprocess :as preproc]
-            [gmrs.wrangle :as wrangle]))
+            [gmrs.wrangle :as wrangle]
+            [gmrs.mills.scoring-tables :as scot]))
 
 (defn close? [tolerance x y]
   (< (Math/abs (double (- x y))) tolerance))
@@ -67,7 +68,7 @@
             [example-cases example-options]
             [:name :venue-name]),
           recs
-          (wrangle/sorted-rec-options
+          (scot/sorted-rec-options
             (nearest-options-scoring
               (select-keys (first cases-and-options)
                            (wrangle/derived-col-names (first cases-and-options)
@@ -105,7 +106,7 @@
             [example-cases example-options]
             [:name :venue-name]),
           recs
-          (wrangle/sorted-rec-options
+          (scot/sorted-rec-options
             (nearest-options-scoring
               (select-keys (first cases-and-options)
                            (wrangle/derived-col-names (first cases-and-options)
@@ -144,7 +145,7 @@
             [example-cases example-options]
             [:name :venue-name]),
           recs
-          (wrangle/sorted-rec-options
+          (scot/sorted-rec-options
             (nearest-options-scoring
               (select-keys (first cases-and-options)
                            (wrangle/derived-col-names (first cases-and-options)
