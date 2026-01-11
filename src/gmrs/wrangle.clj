@@ -8,13 +8,6 @@
 (defn all-same-length? [& xs]
   (= 1 (count (set (map count xs)))))
 
-(defn average-score
-  "Compute the average score, ignoring nils."
-  [coll]
-  (let [coll (filter number? coll)]
-    (if (empty? coll) 0.0
-      (/ (reduce + 0.0 coll) (count coll)))))
-
 (defn cols-row-count
   "Get the length of the column, guaranteeing it's the same everywhere."
   [cols]

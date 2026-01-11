@@ -60,10 +60,10 @@
 (defn mock-pull-strat [_ step-n] (< step-n 15))
 
 (defn make-getter
-  "Make a mock getter from prepared data in columnar format."
-  [prepr-items]
+  "Make a mock getter of 2-item pages from prepared data in columnar format."
+  [item-cols]
   (map (fn [row-page]
          (with-meta
            (wrangle/records-as-cols row-page)
-           (meta prepr-items)))
-       (partition-all 2 (wrangle/cols-as-rows prepr-items))))
+           (meta item-cols)))
+       (partition-all 2 (wrangle/cols-as-rows item-cols))))

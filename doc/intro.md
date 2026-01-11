@@ -24,8 +24,22 @@ Interactions can be referred to in the code as "inters".
 
 ### Handling cases, options, interactions
 
+...
+
 NOTE You need to send at least some cases and options in order for the
 "autogovern" mechanism to diagnose the types of data (features) available.
+
+#### IO settings
+
+IO settings are always associated as :io-settings to the metadata of any items
+(cases, options etc.) gotten from IO give functions.
+
+### Recommendations
+
+On the Clojure level, the recommendations are returned as maps of case IDs
+to maps of option IDs (under key :option-id from the IO settings) and `:score`s.
+The max :score is 1.0 (barring minor float corruption), but it can also be
+negative down to -1.0 and, from some mills, more.
 
 ### Governors and mills
 
@@ -38,10 +52,32 @@ score as objects in the rows.
 
 (TODO: example here)
 
+(TODO: decide and document when the mills will not duplicate existing interactions)
+
 Mill is used multiple times using a pull strategy set by the governor. The pull
 strategy controls getting more and more potential options from the sources
 (so-called gives), until it decides it's better to use the already obtained
 options rather than take more.
+
+#### Mill functions
+
+By convention mill functions should have at least one call form ("canonical
+mill arglist") with these args:
+
+```
+cases cases-getter-partial options-getter-partial inters-getter-partial
+decs-getter-partial pull-strategy
+```
+
+- Cases are the cases for which to recommend, with applied preprocessing,
+  in columnar format.
+- The getter partials are getter functions from io.getters (partial)ed with
+  preprocessing function but with no dataprefs set.
+- The pull-strategy is a pull strategy from governor.
+
+Apart from this, the mill function can have a longer form receiving custom
+configuration arguments, and its own "private" form which can typicaly
+self-recur as long as the pull-strategy decides to continue the search.
 
 ## See also
 
